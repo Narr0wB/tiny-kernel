@@ -34,7 +34,11 @@ EFI_STATUS EFIAPI InitializeGraphics(
         return s;
     }
 
-    framebuffer-> 
+    framebuffer->base_addr    = (void*)Graphics->Mode->FrameBufferBase; 
+    framebuffer->size         = (size_t)Graphics->Mode->FrameBufferSize; 
+    framebuffer->width        = (uint32_t)Graphics->Mode->Info->HorizontalResolution; 
+    framebuffer->height       = (uint32_t)Graphics->Mode->Info->VerticalResolution;
+    framebuffer->len_scanline = (uint32_t)Graphics->Mode->Info->PixelsPerScanLine;
 
     return EFI_SUCCESS;
 } 
@@ -77,7 +81,7 @@ EFI_STATUS EFIAPI efi_main(
     EFI_FILE *KernelELF;
     EFI_STATUS s = 0;
 
-    s = LoadFile(ImageHandle, SystemTable, NULL, L"kernel.elf", &KernelELF);
+    s = LoadFile(ImageHandle, SystemTable, NULL, L"\\bin\\kernel.elf", &KernelELF);
 
     if (s != EFI_SUCCESS) {
         return EFI_NOT_FOUND;
@@ -138,18 +142,27 @@ EFI_STATUS EFIAPI efi_main(
     }
 
     Print(L"Kernel successfully loaded!\n");
+
+    // Allocate memory for all the variables that we need to pass to our kernel
+    bootinfo_t *BootInfo; 
+    UINTN kvPages = (sizeof(bootinfo_t) + 0x1000 - 1) / 0x1000;
+    uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, kvPages, &BootInfo);
+
+    framebuffer_t *framebuffer = &BootInfo->framebuffer;
     
-    EFI_PHYSICAL_ADDRESS  
-    s = InitializeGraphics();
+    s = InitializeGraphics(framebuffer);
+
+    // Print the framebuffer information to the screen
+    Print(L"\n\rCurrent framebuffer:\n\rBase: %p\n\rSize: %d\n\rWidth: %u\n\rHeight: %u\n\rScanline Length: %u\n\r\n\r", framebuffer->base_addr, framebuffer->size, framebuffer->width, framebuffer->height, framebuffer->len_scanline);
 
     // Declare and call the kernel entry point;
-    int (*_kernel_entry)(void) = ( (__attribute__((sysv_abi)) int(*)(void)) header.e_entry );
-    int code = _kernel_entry();
-    Print(L"Kernel exited with code %x\n", code);
+    int (*_kernel_entry)(void*) = ( (__attribute__((sysv_abi)) int(*)(void*)) header.e_entry );
+    int code = _kernel_entry((void*)BootInfo);
+    /* Print(L"Kernel exited with code %d\n", code); */
     
     // Control returned to the EFI firmware
     UINTN Key;
-    Print(L"Press any key to continue...\n");
+    // Print(L"Press any key to continue...\n");
     uefi_call_wrapper(BS->WaitForEvent, 3, 1, &SystemTable->ConIn->WaitForKey, &Key);
    
     return EFI_SUCCESS; 

@@ -1,9 +1,10 @@
 SRCDIR = src
 OUTDIR = bin
+ASSETS = assets
 
 CC = gcc 
 BOOTLOADER_CFLAGS = -I/usr/include/efi -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -Wall  
-KERNEL_CFLAGS = -ffreestanding -fshort-wchar -Wall -Wpedantic
+KERNEL_CFLAGS = -Isrc/kernel/ -ffreestanding -fshort-wchar -Wall -Wpedantic
 
 LD = ld
 BOOTLOADER_LDFLAGS = -shared -Bsymbolic -Lgnu-efi/ -Tgnu-efi/elf_x86_64_efi.lds gnu-efi/crt0-efi-x86_64.o -nostdlib
@@ -15,17 +16,23 @@ BOOT = bootx64
 KERNEL = kernel
 OSNAME = tinyos
 
-KSRCS := $(wildcard $(SRCDIR)/kernel/*.c)
-OBJS = $(patsubst $(SRCDIR)/kernel/%.c, $(OUTDIR)/kernel/%.o, $(KSRCS))
+KSRCS := $(shell find $(SRCDIR)/kernel -name '*.c')
+OBJS = $(addprefix $(OUTDIR)/kernel/, $(patsubst %.c,%.o,$(notdir $(KSRCS))))
 
-# Build the kernel source files
-$(OUTDIR)/kernel/%.o: $(SRCDIR)/kernel/%.c 
-	@mkdir -p $(dir $@)
-	$(CC) $(KERNEL_CFLAGS) -c $^ -o $@
+setup: 
+	@mkdir -p $(dir $(OUTDIR)/boot/)
+	@mkdir -p $(dir $(OUTDIR)/kernel/)
+
+# Build the kernel source files and create the font embedding
+obj:
+	$(CC) $(KERNEL_CFLAGS) -c $(SRCDIR)/kernel/kernel.c -o $(OUTDIR)/kernel/kernel.o 
+	make -C $(SRCDIR)/kernel/video
+	make -C $(SRCDIR)/kernel/libc
+
 
 # Link the kernel obj files into one elf executable
-$(KERNEL).elf: $(OBJS)
-	$(LD) $(KERNEL_LDFLAGS) -o $(OUTDIR)/kernel/$(KERNEL).elf $^
+$(KERNEL).elf: obj 
+	$(LD) $(KERNEL_LDFLAGS) -o $(OUTDIR)/kernel/$(KERNEL).elf $(OBJS) 
 
 # Create the efi application
 $(BOOT): $(SRCDIR)/boot/*.c
@@ -34,13 +41,15 @@ $(BOOT): $(SRCDIR)/boot/*.c
 	$(OBJCOPY) -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 $(OUTDIR)/boot/$(BOOT).so $(OUTDIR)/boot/$(BOOT).efi
 
 # Create the image file and copy the efi application (bootloader) to the efi partition of the image
-buildimg: $(BOOT) $(KERNEL).elf
+buildimg: setup $(BOOT) $(KERNEL).elf
 	dd if=/dev/zero of=$(OUTDIR)/$(OSNAME).img bs=512 count=93750
 	mformat -i $(OUTDIR)/$(OSNAME).img ::
 	mmd -i $(OUTDIR)/$(OSNAME).img ::/efi
 	mmd -i $(OUTDIR)/$(OSNAME).img ::/efi/boot
+	mmd -i $(OUTDIR)/$(OSNAME).img ::/bin 
 	mcopy -i $(OUTDIR)/$(OSNAME).img $(OUTDIR)/boot/$(BOOT).efi ::/efi/boot
-	mcopy -i $(OUTDIR)/$(OSNAME).img $(OUTDIR)/kernel/$(KERNEL).elf ::
+	mcopy -i $(OUTDIR)/$(OSNAME).img $(OUTDIR)/kernel/$(KERNEL).elf ::/bin/
 
 run:
 	qemu-system-x86_64 -cpu qemu64 -bios /usr/share/edk2-ovmf/x64/OVMF.fd -drive file=$(OUTDIR)/$(OSNAME).img,if=ide
+

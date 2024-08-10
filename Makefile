@@ -4,7 +4,7 @@ ASSETS = assets
 
 export CC = gcc
 BOOTLOADER_CFLAGS = -I/usr/include/efi -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -Wall  
-export KERNEL_CFLAGS = -ffreestanding -fshort-wchar -Wall -Wpedantic -g
+export KERNEL_CFLAGS = -ffreestanding -fno-stack-protector -fshort-wchar -fno-stack-check -Wall -Wpedantic -g
 
 export LD = ld
 BOOTLOADER_LDFLAGS = -shared -Bsymbolic -Lgnu-efi/ -Tgnu-efi/elf_x86_64_efi.lds gnu-efi/crt0-efi-x86_64.o -nostdlib

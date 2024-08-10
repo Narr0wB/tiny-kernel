@@ -160,10 +160,11 @@ EFI_STATUS EFIAPI efi_main(
     int code = _kernel_entry((void*)BootInfo);
     /* Print(L"Kernel exited with code %d\n", code); */
     
+
     // Control returned to the EFI firmware
-    UINTN Key;
+    // UINTN Key;
     // Print(L"Press any key to continue...\n");
-    uefi_call_wrapper(BS->WaitForEvent, 3, 1, &SystemTable->ConIn->WaitForKey, &Key);
+    // uefi_call_wrapper(BS->WaitForEvent, 3, 1, &SystemTable->ConIn->WaitForKey, &Key);
    
     return EFI_SUCCESS; 
 }

@@ -3,8 +3,9 @@ gdt_load:
     ; SYSV ABI function prologue
     push rbp
     mov rbp, rsp
-   
-    lgdt 6[rdi]       ; Load the gdt table register with the first argument to the function (gdt_descriptor_t*)
+    
+    cli
+    lgdt [rdi]       ; Load the gdt table register with the first argument to the function (gdt_descriptor_t*)
     mov ds, dx
     mov es, dx
     mov fs, dx
@@ -13,7 +14,7 @@ gdt_load:
 
     push rsi          ; Put on the stack the index of which GDT entry will be used to describe our code segment
     push .retf_cs     ; Put on the stack the return address after perfoming the far return
-    retf 
+    retfq 
 
 .retf_cs:
     ; SYSV ABI function epilogue

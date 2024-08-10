@@ -2,13 +2,15 @@ SRCDIR = src
 OUTDIR = bin
 ASSETS = assets
 
-CC = gcc 
+export CC = gcc
 BOOTLOADER_CFLAGS = -I/usr/include/efi -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -Wall  
-KERNEL_CFLAGS = -Isrc/kernel/ -ffreestanding -fshort-wchar -Wall -Wpedantic
+export KERNEL_CFLAGS = -ffreestanding -fshort-wchar -Wall -Wpedantic -g
 
-LD = ld
+export LD = ld
 BOOTLOADER_LDFLAGS = -shared -Bsymbolic -Lgnu-efi/ -Tgnu-efi/elf_x86_64_efi.lds gnu-efi/crt0-efi-x86_64.o -nostdlib
 KERNEL_LDFLAGS = -T src/kernel/kernel.ld  -nostdlib 
+
+export AS = as
 
 OBJCOPY = objcopy
 
@@ -25,9 +27,10 @@ setup:
 
 # Build the kernel source files and create the font embedding
 obj:
-	$(CC) $(KERNEL_CFLAGS) -c $(SRCDIR)/kernel/kernel.c -o $(OUTDIR)/kernel/kernel.o 
+	$(CC) $(KERNEL_CFLAGS) -Isrc/kernel/ -c $(SRCDIR)/kernel/kernel.c -o $(OUTDIR)/kernel/kernel.o 
 	make -C $(SRCDIR)/kernel/video
 	make -C $(SRCDIR)/kernel/libc
+	make -C $(SRCDIR)/kernel/memory
 
 
 # Link the kernel obj files into one elf executable
@@ -51,5 +54,8 @@ buildimg: setup $(BOOT) $(KERNEL).elf
 	mcopy -i $(OUTDIR)/$(OSNAME).img $(OUTDIR)/kernel/$(KERNEL).elf ::/bin/
 
 run:
-	qemu-system-x86_64 -cpu qemu64 -bios /usr/share/edk2-ovmf/x64/OVMF.fd -drive file=$(OUTDIR)/$(OSNAME).img,if=ide
+	qemu-system-x86_64 -cpu qemu64 -bios OVMF.fd -drive file=$(OUTDIR)/$(OSNAME).img,if=ide
 
+debug: 
+	qemu-system-x86_64 -cpu qemu64 -bios OVMF.fd -s -S -drive file=$(OUTDIR)/$(OSNAME).img,if=ide & disown
+	gdb $(OUTDIR)/kernel/$(KERNEL).elf

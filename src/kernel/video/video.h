@@ -3,18 +3,19 @@
 #define VIDEO_H
 
 #include <common.h>
-#include <libc/stdlib.h>
+#include <boot/boot.h>
+#include <klibc/lib.h>
 
 #define PSF_MAGIC 0x3604
 
-typedef struct framebuffer {
-    void* base_addr;
-    size_t size;
-    
-    uint32_t width;
-    uint32_t height;
-    uint32_t len_scanline;
-} framebuffer_t;
+// typedef struct framebuffer {
+//     void* base_addr;
+//     size_t size;
+//     
+//     uint32_t width;
+//     uint32_t height;
+//     uint32_t len_scanline;
+// } framebuffer_t;
 
 
 typedef struct psf_header {

@@ -10,10 +10,9 @@ gdt_load:
     mov es, dx
     mov fs, dx
     mov gs, dx
-    mov ss, dx
 
-    push rsi          ; Put on the stack the index of which GDT entry will be used to describe our code segment
-    push .retf_cs     ; Put on the stack the return address after perfoming the far return
+    push rsi          ; What we need to put in CS  
+    push .retf_cs     ; Return address after perfoming the far return
     retfq 
 
 .retf_cs:

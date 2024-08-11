@@ -29,8 +29,9 @@ setup:
 obj:
 	$(CC) $(KERNEL_CFLAGS) -Isrc/kernel/ -c $(SRCDIR)/kernel/kernel.c -o $(OUTDIR)/kernel/kernel.o 
 	make -C $(SRCDIR)/kernel/video
-	make -C $(SRCDIR)/kernel/libc
+	make -C $(SRCDIR)/kernel/klibc
 	make -C $(SRCDIR)/kernel/memory
+	make -C $(SRCDIR)/kernel/int
 
 
 # Link the kernel obj files into one elf executable
@@ -54,7 +55,7 @@ buildimg: setup $(BOOT) $(KERNEL).elf
 	mcopy -i $(OUTDIR)/$(OSNAME).img $(OUTDIR)/kernel/$(KERNEL).elf ::/bin/
 
 run:
-	qemu-system-x86_64 -cpu qemu64 -bios OVMF.fd -drive file=$(OUTDIR)/$(OSNAME).img,if=ide
+	qemu-system-x86_64 -cpu qemu64 -d int -no-shutdown -no-reboot -bios OVMF.fd -drive file=$(OUTDIR)/$(OSNAME).img,if=ide
 
 debug: 
 	qemu-system-x86_64 -cpu qemu64 -bios OVMF.fd -s -S -drive file=$(OUTDIR)/$(OSNAME).img,if=ide & disown

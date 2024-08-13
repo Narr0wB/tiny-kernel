@@ -50,10 +50,9 @@ typedef enum {
 
 #define GDT_LIMIT_LOW(l)                (l & 0xFFFF)
 #define GDT_BASE_LOW(b)                 (b & 0xFFFF)
-#define GDT_BASE_MIDDLE(b)              ((b >> 16) & 0xFFFF)
+#define GDT_BASE_MIDDLE(b)              ((b >> 16) & 0xFF)
 #define GDT_LIMIT_HIGH_FLAGS(l, f)      (((l >> 16) & 0xF) | (f & 0xF0))
 #define GDT_BASE_HIGH(b)                 ((b >> 24) & 0xFF)
-#define GDT_BASE_HIGHER(b)              ((b >> 32) & 0xFFFFFFFF)
 
 #define GDT_ENTRY(base, limit, access, flags) { \
     GDT_LIMIT_LOW(limit),                       \

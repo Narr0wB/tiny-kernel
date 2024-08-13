@@ -7,23 +7,116 @@ idt_descriptor_t idt_descriptor = { sizeof(IDT) - 1, (uintptr_t)IDT };
 extern void load_idt(idt_descriptor_t *idt_descriptor);
 extern void *isr_stub_table[];
 
-void init_idt() {
-    for (uint8_t interrupt = 0; interrupt < 32; ++interrupt) {
-        idt_set_gate(interrupt, (uintptr_t)isr_stub_table[interrupt], 0x08, 0x8E);
+void init_pic(uint8_t offset1, uint8_t offset2) {
+    // Remap the PICs
+    outb(PIC1_COMMAND_PORT, PIC_ICW1_BASE | PIC_ICW1_ICW4);
+    io_wait();
+    outb(PIC2_COMMAND_PORT, PIC_ICW1_BASE | PIC_ICW1_ICW4);
+    io_wait();
+
+    outb(PIC1_DATA_PORT, offset1);
+    io_wait();
+    outb(PIC2_DATA_PORT, offset2);
+    io_wait();
+
+    outb(PIC1_DATA_PORT, 0x01 << 2);
+    io_wait();
+    outb(PIC2_DATA_PORT, 0x02);
+
+    outb(PIC1_DATA_PORT, PIC_ICW4_X86 | PIC_ICW4_AUTO_EOI);
+    io_wait();
+    outb(PIC2_DATA_PORT, PIC_ICW4_X86 | PIC_ICW4_AUTO_EOI);
+    io_wait();
+
+    outb(PIC1_DATA_PORT, 0x00);
+    io_wait();
+    outb(PIC2_DATA_PORT, 0x00);
+    io_wait();
+}
+
+void disable_pic() {
+    outb(PIC1_DATA_PORT, 0xFF);
+    io_wait();
+    outb(PIC2_DATA_PORT, 0xFF);
+    io_wait();
+}
+
+void pic_send_eoi(uint8_t irq) {
+    if (irq >= 8) {
+        irq -= 8;
+        outb(PIC2_COMMAND_PORT, PIC_CMD_SPECIFIC_EOI | irq);
+        io_wait();
+        outb(PIC1_COMMAND_PORT, PIC_CMD_SPECIFIC_EOI | 0x02);
+        io_wait();
+    }
+    else {
+        outb(PIC1_COMMAND_PORT, PIC_CMD_SPECIFIC_EOI | irq);
+        io_wait();
+    }
+}
+
+uint16_t pic_read_irq_reg() {
+    outb(PIC1_COMMAND_PORT, PIC_CMD_READ_IRR);
+    io_wait();
+
+    outb(PIC2_COMMAND_PORT, PIC_CMD_READ_IRR);
+    io_wait();
+
+    return (inb(PIC2_COMMAND_PORT) | (inb(PIC1_COMMAND_PORT) << 8)); 
+}
+
+uint16_t pic_read_isr_reg() {
+    outb(PIC1_COMMAND_PORT, PIC_CMD_READ_ISR);
+    io_wait();
+
+    outb(PIC2_COMMAND_PORT, PIC_CMD_READ_ISR);
+    io_wait();
+
+    return (inb(PIC2_COMMAND_PORT) | (inb(PIC1_COMMAND_PORT) << 8)); 
+}
+
+void pic_mask_irq(uint8_t irq) {
+    uint8_t port;
+
+    if (irq < 8) {
+        port = PIC1_DATA_PORT;
+    }
+    else {
+        irq -= 8;
+        port = PIC2_DATA_PORT;
     }
 
-    // Remap the PIC 
-    outb(0x20, 0x11); 
-    outb(0xA0, 0x11); 
-    outb(0x21, 0x20); 
-    outb(0xA1, 0x28);
-    outb(0x21, 0x04);
-    outb(0xA1, 0x02); 
-    outb(0x21, 0x01); 
-    outb(0xA1, 0x01); 
-    outb(0x21, 0x0); 
-    outb(0xA1, 0x0); 
+    uint8_t mask = inb(port);
+    outb(port, mask | (1 << irq));
+    io_wait();
+}
 
+void pic_unmask_irq(uint8_t irq) {
+    uint8_t port;
+
+    if (irq < 8) {
+        port = PIC1_DATA_PORT;
+    }
+    else {
+        irq -= 8;
+        port = PIC2_DATA_PORT;
+    }
+
+    uint8_t mask = inb(port);
+    outb(port, mask & ~(1 << irq));
+    io_wait();
+}
+
+void init_idt() {
+    for (uint8_t interrupt = 0; interrupt < 255; ++interrupt) {
+        idt_set_gate(interrupt, (uintptr_t)&isr_handler, 0x08, 0x8E);
+    }
+    // for (uint8_t interrupt = 32; interrupt < 255; ++interrupt) {
+    //     idt_set_gate(interrupt, (uintptr_t)&isr_handler, 0x00, 0x8E);
+    // }
+
+    init_pic(0x20, 0x28);
+    pic_mask_irq(0);
     load_idt(&idt_descriptor);
 }
 
@@ -43,4 +136,9 @@ void idt_enable_gate(uint8_t interrupt) {
 
 void idt_disable_gate(uint8_t interrupt) {
     clr_bit(IDT[interrupt].flags, 8);
+}
+
+void isr_handler() {
+    kprintf("i GOT AN INTERRUPT");
+    __asm__ volatile ("cli; hlt");
 }

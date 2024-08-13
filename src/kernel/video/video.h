@@ -8,16 +8,6 @@
 
 #define PSF_MAGIC 0x3604
 
-// typedef struct framebuffer {
-//     void* base_addr;
-//     size_t size;
-//     
-//     uint32_t width;
-//     uint32_t height;
-//     uint32_t len_scanline;
-// } framebuffer_t;
-
-
 typedef struct psf_header {
     uint16_t magic;
     uint8_t font_mode;
@@ -29,7 +19,6 @@ typedef struct psf_font {
     uint16_t glyph_count;
     void *glyph_start;
 } psf_font_t;
-
 
 typedef struct console {
     uint8_t  cell_size;

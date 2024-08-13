@@ -10,6 +10,7 @@ gdt_load:
     mov es, dx
     mov fs, dx
     mov gs, dx
+    mov ss, dx
 
     push rsi          ; What we need to put in CS  
     push .retf_cs     ; Return address after perfoming the far return

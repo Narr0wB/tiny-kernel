@@ -15,7 +15,7 @@ int init(bootinfo_t* init_data) {
 
 int _kernel_entry(void* init_data) {
     init((bootinfo_t*)init_data);
-    kprintf("hello world!\n");
+    kprintf("hello world! %s che sono %d ma non dire mai che questo puntatore e %p\n", "odio gli zingari", 434246, 0xfffffff43);
 
     while (1) {
         __asm__("hlt");

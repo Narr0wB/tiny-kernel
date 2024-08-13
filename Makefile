@@ -59,4 +59,4 @@ run:
 
 debug: 
 	qemu-system-x86_64 -cpu qemu64 -bios OVMF.fd -s -S -drive file=$(OUTDIR)/$(OSNAME).img,if=ide & disown
-	gdb $(OUTDIR)/kernel/$(KERNEL).elf
+	gdb $(OUTDIR)/kernel/$(KERNEL).elf --eval-command="target remote :1234"

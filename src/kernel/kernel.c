@@ -7,15 +7,23 @@
 
 int init(bootinfo_t* init_data) {
     init_video(&init_data->framebuffer);
+    
+    kprintf("Initializing GDT and memory manager...  ");
     init_mm();
-    init_idt();
+    kprintf("DONE\n");
 
+    kprintf("Initializing IDT and setting up interrupt service routines...  ");
+    init_idt();
+    kprintf("DONE\n");
+
+    kprintf("\n\n");
     return 0;
 }
 
 int _kernel_entry(void* init_data) {
     init((bootinfo_t*)init_data);
     kprintf("hello world! %s che sono %d ma non dire mai che questo puntatore e %p\n", "odio gli zingari", 434246, 0xfffffff43);
+    kprintf("test %% %ld %x", 38947928, 349834);
 
     while (1) {
         __asm__("hlt");

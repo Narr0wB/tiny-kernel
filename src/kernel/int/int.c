@@ -109,7 +109,7 @@ void pic_unmask_irq(uint8_t irq) {
 
 void init_idt() {
     for (uint8_t interrupt = 0; interrupt < 255; ++interrupt) {
-        idt_set_gate(interrupt, (uintptr_t)&isr_handler, 0x08, 0x8E);
+        idt_set_gate(interrupt, (uintptr_t)isr_stub_table[interrupt], 0x08, 0x8E);
     }
     // for (uint8_t interrupt = 32; interrupt < 255; ++interrupt) {
     //     idt_set_gate(interrupt, (uintptr_t)&isr_handler, 0x00, 0x8E);
@@ -138,7 +138,7 @@ void idt_disable_gate(uint8_t interrupt) {
     clr_bit(IDT[interrupt].flags, 8);
 }
 
-void isr_handler() {
+void isr_handler(void *data) {
     kprintf("i GOT AN INTERRUPT");
-    __asm__ volatile ("cli; hlt");
+    // __asm__ volatile ("cli; hlt");
 }

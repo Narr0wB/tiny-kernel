@@ -79,6 +79,6 @@ uint16_t pic_read_isr_reg();
 void pic_mask_irq(uint8_t irq);
 void pic_unmask_irq(uint8_t irq);
 
-__attribute__((noreturn)) void isr_handler(void);
+void isr_handler(void *data);
 
 #endif // INT_H

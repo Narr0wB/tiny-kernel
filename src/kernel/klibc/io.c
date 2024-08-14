@@ -199,7 +199,7 @@ int vsprintf(void *_pc, void *_ps, const char *fmt, va_list args) {
             state = PRINTF_STATE_NORMAL;
         }
         else {
-            putchar(*fmt++);
+            pc(*fmt++);
         }
     }
     

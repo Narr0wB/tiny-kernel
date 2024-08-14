@@ -1,10 +1,12 @@
 %macro isr_err_stub 1
 isr_stub_%+%1:
+    cld
     call isr_handler 
     iretq
 %endmacro
 %macro isr_no_err_stub 1
 isr_stub_%+%1:
+    cld
     call isr_handler 
     iretq
 %endmacro

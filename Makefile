@@ -32,6 +32,8 @@ obj:
 	make -C $(SRCDIR)/kernel/klibc
 	make -C $(SRCDIR)/kernel/memory
 	make -C $(SRCDIR)/kernel/int
+	make -C $(SRCDIR)/kernel/tty
+	make -C $(SRCDIR)/kernel/device
 
 
 # Link the kernel obj files into one elf executable

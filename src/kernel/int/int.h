@@ -5,6 +5,8 @@
 #include <common.h>
 #include <klibc/lib.h>
 #include <klibc/io.h>
+#include <device/ps2.h>
+#include <sys/types.h>
 
 typedef struct {
     uint16_t isr_addr_low;
@@ -20,6 +22,15 @@ typedef struct {
     uint16_t size;
     uint64_t addr;
 } __attribute__((packed)) idt_descriptor_t;
+
+typedef struct {
+    uintptr_t rip;
+    uintptr_t cs;
+    uintptr_t flags;
+    uintptr_t rsp;
+    uintptr_t ss;
+} __attribute__((packed)) interrupt_info_t;
+
 
 typedef enum {
     IDT_FLAGS_GATE_INT          = 0xE,
@@ -79,6 +90,7 @@ uint16_t pic_read_isr_reg();
 void pic_mask_irq(uint8_t irq);
 void pic_unmask_irq(uint8_t irq);
 
-void isr_handler(void *data);
+void isr_handler(uint64_t irq, uint64_t err, interrupt_info_t *info, registers_t *regs);
+void irq_handler(uint64_t irq);
 
 #endif // INT_H

@@ -4,10 +4,10 @@
 
 #include <common.h>
 #include <stdarg.h>
-#include <video/video.h>
 #include <klibc/string.h>
+#include <tty/tty.h>
 
-#define _cdecl __attribute__((stdcall))
+#define EOL "\n"
 
 int putchar(int c);
 int puts(const char *str);

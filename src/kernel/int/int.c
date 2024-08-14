@@ -1,11 +1,13 @@
 
+#include "device/ps2.h"
 #include <int/int.h>
 
-__attribute__((aligned(0x10))) idt_entry_t IDT[256];
+__attribute__((aligned(0x10))) idt_entry_t IDT[256] = {0};
 idt_descriptor_t idt_descriptor = { sizeof(IDT) - 1, (uintptr_t)IDT };
 
 extern void load_idt(idt_descriptor_t *idt_descriptor);
 extern void *isr_stub_table[];
+extern void *irq_table[];
 
 void init_pic(uint8_t offset1, uint8_t offset2) {
     // Remap the PICs
@@ -23,9 +25,9 @@ void init_pic(uint8_t offset1, uint8_t offset2) {
     io_wait();
     outb(PIC2_DATA_PORT, 0x02);
 
-    outb(PIC1_DATA_PORT, PIC_ICW4_X86 | PIC_ICW4_AUTO_EOI);
+    outb(PIC1_DATA_PORT, PIC_ICW4_X86);
     io_wait();
-    outb(PIC2_DATA_PORT, PIC_ICW4_X86 | PIC_ICW4_AUTO_EOI);
+    outb(PIC2_DATA_PORT, PIC_ICW4_X86);
     io_wait();
 
     outb(PIC1_DATA_PORT, 0x00);
@@ -108,12 +110,12 @@ void pic_unmask_irq(uint8_t irq) {
 }
 
 void init_idt() {
-    for (uint8_t interrupt = 0; interrupt < 255; ++interrupt) {
+    for (uint8_t interrupt = 0; interrupt < 32; ++interrupt) {
         idt_set_gate(interrupt, (uintptr_t)isr_stub_table[interrupt], 0x08, 0x8E);
     }
-    // for (uint8_t interrupt = 32; interrupt < 255; ++interrupt) {
-    //     idt_set_gate(interrupt, (uintptr_t)&isr_handler, 0x00, 0x8E);
-    // }
+    for (uint8_t interrupt = 0; interrupt < 16; ++interrupt) {
+        idt_set_gate(interrupt + 0x20, (uintptr_t)irq_table[interrupt], 0x08, 0x8E);
+    }
 
     init_pic(0x20, 0x28);
     pic_mask_irq(0);
@@ -138,7 +140,17 @@ void idt_disable_gate(uint8_t interrupt) {
     clr_bit(IDT[interrupt].flags, 8);
 }
 
-void isr_handler(void *data) {
-    kprintf("i GOT AN INTERRUPT");
-    // __asm__ volatile ("cli; hlt");
+void isr_handler(uint64_t irq, uint64_t err, interrupt_info_t *info, registers_t *regs) {
+    kprintf("\n\nException no. [0x%x] occurred with error code: 0x%llx", irq, err);
+    __asm__ volatile ("cli; hlt");
 }
+
+void irq_handler(uint64_t irq) {
+    if (irq == 1) {
+        uint8_t key_code = ps2_read_response();
+        kprintf("got key code %x"EOL, key_code); 
+    } 
+
+    pic_send_eoi(irq);
+}
+

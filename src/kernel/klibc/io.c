@@ -46,7 +46,7 @@ int print_number(void *putc, int64_t n, uint8_t sign, uint8_t radix) {
     }
    
     int8_t pos = 0, counter = 0;
-    while (number > radix) {
+    while (number >= radix) {
         buffer[pos++] = hex_chars[(number % radix)];
         number /= radix;
     } 

@@ -5,12 +5,7 @@
 #include <common.h>
 
 #define get_bit(v, n) ((v >> n) & 1)
-#define set_bit(v, n) ((v) | (1 << n))
-#define clr_bit(v, n) ((v) & ~(1 << n))
-
-void* memcpy(void *dest, const void *src, size_t count);
-void* memset(void *dest, int c, size_t count);
-void* memmove(void *dest, const void *src, size_t count);
-int memcmp(const void *buf1, const void *buf2, size_t count);
+#define set_bit(v, n) ((v) |= (1 << n))
+#define clr_bit(v, n) ((v) &= ~(1 << n))
 
 #endif // STDLIB_H

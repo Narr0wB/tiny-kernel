@@ -2,11 +2,13 @@
 #include <int/int.h>
 #include <boot/boot.h>
 #include <video/video.h>
+#include <tty/tty.h>
 #include <klibc/io.h>
 #include <memory/memory.h>
 
 int init(bootinfo_t* init_data) {
     init_video(&init_data->framebuffer);
+    init_tty();
     
     kprintf("Initializing GDT and memory manager...  ");
     init_mm();
@@ -16,13 +18,15 @@ int init(bootinfo_t* init_data) {
     init_idt();
     kprintf("DONE\n");
 
-    kprintf("\n\n");
     return 0;
 }
 
+extern console_t console;
 int _kernel_entry(void* init_data) {
     init((bootinfo_t*)init_data);
-    kprintf("test %% %ld %x", 38947928, 349834);
+    
+    for (int i = 0; i < 10; i++)
+        kprintf("test %% %d %d %d"EOL, ((bootinfo_t*)init_data)->framebuffer.height, ((bootinfo_t*)init_data)->framebuffer.len_scanline, ((bootinfo_t*)init_data)->framebuffer.size);
 
     while (1) {
         __asm__("hlt");

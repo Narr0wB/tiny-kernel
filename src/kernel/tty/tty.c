@@ -34,10 +34,10 @@ int init_psf(void *data) {
     return 0;
 }
 
-void tty_offset_line(uint8_t lines) {
+void tty_offset_line(uint32_t lines) {
     uint32_t height_offset = font.header.character_size * tty_framebuffer->len_scanline;
 
-    for (uint8_t i = 0; i < lines; ++i) {
+    for (uint32_t i = 0; i < lines; ++i) {
         for (size_t j = 0; j < tty_framebuffer->len_scanline * tty_framebuffer->height; ++j) {
             if ((tty_framebuffer->size - j) < height_offset) {
                 ((uint32_t*)tty_framebuffer->base_addr)[j] = CLEAR_COLOR;
@@ -46,6 +46,16 @@ void tty_offset_line(uint8_t lines) {
             ((uint32_t*)tty_framebuffer->base_addr)[j] = ((uint32_t*)tty_framebuffer->base_addr)[j + height_offset];
         }
     }
+}
+
+void tty_set_cursor(uint32_t cell_x, uint32_t cell_y) {
+    console.current_cell = cell_y * console.cols + cell_x;
+}
+
+void tty_clear(uint32_t clear_color) {
+    for (size_t i = 0; i < tty_framebuffer->len_scanline * tty_framebuffer->height; ++i) {
+        ((uint32_t*)tty_framebuffer->base_addr)[i] = clear_color;
+    } 
 }
 
 int draw_char(char c, uint32_t x, uint32_t y) {

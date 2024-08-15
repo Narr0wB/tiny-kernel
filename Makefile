@@ -1,16 +1,19 @@
-SRCDIR = src
-OUTDIR = bin
-ASSETS = assets
+BASE = $(shell pwd)
+
+export SRCDIR = $(BASE)/src
+export OUTDIR = $(BASE)/bin
+export ASSETS = $(BASE)/assets
+export ARCH = $(BASE)/src/arch/x86_64
 
 export CC = gcc
-BOOTLOADER_CFLAGS = -I/usr/include/efi -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -Wall  
-export KERNEL_CFLAGS = -ffreestanding -fno-stack-protector -fshort-wchar -fno-stack-check -Wall -Wpedantic -g
-
 export LD = ld
-BOOTLOADER_LDFLAGS = -shared -Bsymbolic -Lgnu-efi/ -Tgnu-efi/elf_x86_64_efi.lds gnu-efi/crt0-efi-x86_64.o -nostdlib
-KERNEL_LDFLAGS = -T src/kernel/kernel.ld  -nostdlib 
-
 export AS = as
+export KERNEL_CFLAGS = -ffreestanding -fno-stack-protector -fshort-wchar -fno-stack-check -Wall -Wpedantic -g
+export KERNEL_INCLUDE = $(BASE)/src/kernel/include
+
+BOOTLOADER_LDFLAGS = -shared -Bsymbolic -Lgnu-efi/ -Tgnu-efi/elf_x86_64_efi.lds gnu-efi/crt0-efi-x86_64.o -nostdlib
+BOOTLOADER_CFLAGS = -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -Wall  
+KERNEL_LDFLAGS = -nostdlib 
 
 OBJCOPY = objcopy
 
@@ -27,7 +30,7 @@ setup:
 
 # Build the kernel source files and create the font embedding
 obj:
-	$(CC) $(KERNEL_CFLAGS) -Isrc/kernel/ -c $(SRCDIR)/kernel/kernel.c -o $(OUTDIR)/kernel/kernel.o 
+	make -C $(SRCDIR)/kernel	
 	make -C $(SRCDIR)/kernel/video
 	make -C $(SRCDIR)/kernel/klibc
 	make -C $(SRCDIR)/kernel/memory
@@ -38,11 +41,11 @@ obj:
 
 # Link the kernel obj files into one elf executable
 $(KERNEL).elf: obj 
-	$(LD) $(KERNEL_LDFLAGS) -o $(OUTDIR)/kernel/$(KERNEL).elf $(OBJS) 
+	$(LD) $(KERNEL_LDFLAGS) -T$(ARCH)/kernel.ld -o $(OUTDIR)/kernel/$(KERNEL).elf $(OBJS) 
 
 # Create the efi application
 $(BOOT): $(SRCDIR)/boot/*.c
-	$(CC) $(BOOTLOADER_CFLAGS) -c $^ -o $(OUTDIR)/boot/$(BOOT).o
+	$(CC) $(BOOTLOADER_CFLAGS) -I$(SRCDIR)/boot/include -c $^ -o $(OUTDIR)/boot/$(BOOT).o
 	$(LD) $(BOOTLOADER_LDFLAGS) $(OUTDIR)/boot/$(BOOT).o -o $(OUTDIR)/boot/$(BOOT).so -lgnuefi -lefi 
 	$(OBJCOPY) -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 $(OUTDIR)/boot/$(BOOT).so $(OUTDIR)/boot/$(BOOT).efi
 

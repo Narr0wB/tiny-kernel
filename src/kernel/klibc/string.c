@@ -52,7 +52,7 @@ int memcmp(const void *buf1, const void *buf2, size_t count) {
 }
 
 int is_digit(char c) {
-    if ('0' >= c && c <= '9') return 1;
+    if ('0' <= c && c <= '9') return 1;
     return 0;
 }
 

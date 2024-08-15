@@ -1,5 +1,4 @@
 
-#include "device/ps2.h"
 #include <int/int.h>
 
 __attribute__((aligned(0x10))) idt_entry_t IDT[256] = {0};
@@ -141,7 +140,9 @@ void idt_disable_gate(uint8_t interrupt) {
 }
 
 void isr_handler(uint64_t irq, uint64_t err, interrupt_info_t *info, registers_t *regs) {
-    kprintf("\n\nException no. [0x%x] occurred with error code: 0x%llx", irq, err);
+    char buffer[256];
+    sprintf(buffer, "\n\nException no. [0x%lx] occurred with error code: 0x%lx", irq, err);
+    panic(buffer);
     __asm__ volatile ("cli; hlt");
 }
 

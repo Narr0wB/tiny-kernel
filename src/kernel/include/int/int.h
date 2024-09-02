@@ -3,9 +3,9 @@
 #define INT_H
 
 #include <common.h>
-#include <klibc/lib.h>
-#include <klibc/assert.h>
-#include <klibc/io.h>
+#include <util/lib.h>
+#include <util/assert.h>
+#include <util/io.h>
 #include <device/ps2.h>
 #include <sys/types.h>
 
@@ -91,7 +91,7 @@ uint16_t pic_read_isr_reg();
 void pic_mask_irq(uint8_t irq);
 void pic_unmask_irq(uint8_t irq);
 
-void isr_handler(uint64_t irq, uint64_t err, interrupt_info_t *info, registers_t *regs);
+void exception_handler(uint64_t irq, uint64_t err, interrupt_info_t *info, registers_t *regs);
 void irq_handler(uint64_t irq);
 
 #endif // INT_H

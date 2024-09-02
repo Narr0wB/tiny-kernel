@@ -1,2 +1,2 @@
--I/usr/include/efi
+-Isrc/boot/include
 -Isrc/kernel/include

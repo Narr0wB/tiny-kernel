@@ -32,7 +32,7 @@ setup:
 obj:
 	make -C $(SRCDIR)/kernel	
 	make -C $(SRCDIR)/kernel/video
-	make -C $(SRCDIR)/kernel/klibc
+	make -C $(SRCDIR)/kernel/util
 	make -C $(SRCDIR)/kernel/memory
 	make -C $(SRCDIR)/kernel/int
 	make -C $(SRCDIR)/kernel/tty

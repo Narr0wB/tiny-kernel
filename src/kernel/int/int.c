@@ -139,7 +139,7 @@ void idt_disable_gate(uint8_t interrupt) {
     clr_bit(IDT[interrupt].flags, 8);
 }
 
-void isr_handler(uint64_t irq, uint64_t err, interrupt_info_t *info, registers_t *regs) {
+void exception_handler(uint64_t irq, uint64_t err, interrupt_info_t *info, registers_t *regs) {
     char buffer[256];
     sprintf(buffer, "\n\nException no. [0x%lx] occurred with error code: 0x%lx", irq, err);
     panic(buffer);
@@ -148,8 +148,8 @@ void isr_handler(uint64_t irq, uint64_t err, interrupt_info_t *info, registers_t
 
 void irq_handler(uint64_t irq) {
     if (irq == 1) {
-        uint8_t key_code = ps2_read_response();
-        kprintf("got key code %x"EOL, key_code); 
+        // uint8_t key_code = ps2_read_data();
+        // kprintf("got key code %x"EOL, key_code); 
     } 
 
     pic_send_eoi(irq);

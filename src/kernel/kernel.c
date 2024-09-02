@@ -3,7 +3,7 @@
 #include <boot/boot.h>
 #include <video/video.h>
 #include <tty/tty.h>
-#include <klibc/io.h>
+#include <util/io.h>
 #include <memory/memory.h>
 
 int init(bootinfo_t* init_data) {
@@ -28,6 +28,7 @@ int _kernel_entry(void* init_data) {
     for (int i = 0; i < 10; i++)
         kprintf("test %% %d %d %d"EOL, ((bootinfo_t*)init_data)->framebuffer.height, ((bootinfo_t*)init_data)->framebuffer.len_scanline, ((bootinfo_t*)init_data)->framebuffer.size);
 
+    tty_show_prompt();
     while (1) {
         __asm__("hlt");
     }

@@ -3,7 +3,7 @@
 #define PS2_H
 
 #include <sys/types.h>
-#include <klibc/io.h>
+#include <util/io.h>
 
 #define PS2_CTRL_DATA_PORT      0x60
 #define PS2_CTRL_STATUS_PORT    0x64
@@ -19,7 +19,7 @@ static inline bool ps2_input_buffer_status() {
     return status & (0x01 << 1);
 }
 
-static inline void ps2_issue_command_controller(uint8_t command, uint8_t data_byte) {
+static inline void ps2_issue_command(uint8_t command) {
     while (ps2_input_buffer_status()) {
         __asm__("nop");
     }
@@ -28,16 +28,21 @@ static inline void ps2_issue_command_controller(uint8_t command, uint8_t data_by
     io_wait();
 }
 
-static inline uint8_t ps2_read_response() {
+static inline void ps2_write_data(uint8_t data) {
+    while (ps2_input_buffer_status()) {
+        __asm__("nop");
+    }
+    
+    outb(PS2_CTRL_DATA_PORT, data);
+    io_wait();
+}
+
+static inline uint8_t ps2_read_data() {
     while (!ps2_output_buffer_status()) {
         __asm__("nop");
     }
 
     return inb(PS2_CTRL_DATA_PORT);
-}
-
-static inline void ps2_issue_command_port1(uint8_t command, uint8_t data_byte) {
-     
 }
 
 #endif // PS2_h

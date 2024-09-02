@@ -44,7 +44,7 @@ isr_stub:
     lea rdx, [rsp + 136] ; load the interrupt_info_t structure
     mov rcx, rsp         ; load the saved registers
     
-    call isr_handler 
+    call exception_handler 
     
     popaq
     add rsp, 16
@@ -79,7 +79,7 @@ irq_%+%1:
     jmp irq_stub
 %endmacro
     
-extern isr_handler 
+extern exception_handler 
 extern irq_handler
 
 isr_no_err_stub 0

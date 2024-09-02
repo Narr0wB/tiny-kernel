@@ -5,7 +5,7 @@
 #include <elf.h>
 
 #include "efidef.h"
-#include "utils.h"
+#include <utils.h>
 
 int EFIAPI memcmp(
     const void *buf1, 
@@ -143,13 +143,26 @@ EFI_STATUS EFIAPI efi_main(
 
     Print(L"Kernel successfully loaded!\n");
 
+    // Load the memory map
+    EFI_MEMORY_DESCRIPTOR *MemoryMap;
+    UINTN                  MemoryMapSize;
+    UINTN                  MemoryMapKey;
+    UINTN                  DescriptorSize;
+    UINT32                 DescriptorVersion;
+    EFI_STATUS             status;
+
+    MemoryMapSize = 0;
+    MemoryMap     = NULL;
+
+    status = uefi_call_wrapper(BS->GetMemoryMap, 5, &MemoryMapSize, MemoryMap, &MemoryMapKey, &DescriptorSize, &DescriptorVersion);
+    if (status != EFI_SUCCESS) { Print(L"Failed to get the memory map!\n"); }
+
     // Allocate memory for all the variables that we need to pass to our kernel
     bootinfo_t *BootInfo; 
     UINTN kvPages = (sizeof(bootinfo_t) + 0x1000 - 1) / 0x1000;
     uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, kvPages, &BootInfo);
 
     framebuffer_t *framebuffer = &BootInfo->framebuffer;
-    
     s = InitializeGraphics(framebuffer);
 
     // Print the framebuffer information to the screen
@@ -160,12 +173,6 @@ EFI_STATUS EFIAPI efi_main(
     int code = _kernel_entry((void*)BootInfo);
     /* Print(L"Kernel exited with code %d\n", code); */
     
-
-    // Control returned to the EFI firmware
-    // UINTN Key;
-    // Print(L"Press any key to continue...\n");
-    // uefi_call_wrapper(BS->WaitForEvent, 3, 1, &SystemTable->ConIn->WaitForKey, &Key);
-   
     return EFI_SUCCESS; 
 }
 

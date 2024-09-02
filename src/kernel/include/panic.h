@@ -4,7 +4,7 @@
 
 #include <common.h>
 #include <tty/tty.h>
-#include <klibc/io.h>
+#include <util/io.h>
 
 extern void panic(const char *msg);
 

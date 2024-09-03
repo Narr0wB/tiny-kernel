@@ -3,6 +3,7 @@
 #define MEMORY_H
 
 #include <common.h>
+#include <boot/boot.h>
 
 typedef struct {
     uint16_t limit_low;
@@ -68,6 +69,15 @@ typedef enum {
 #define GDT_USER_CODE 0x18
 #define GDT_USER_DATA 0x20
 
-void init_mm();
+#define PAGE_SIZE 4096 // 4K page size
+
+typedef enum {
+    EFI_CONVENTIONAL_MEMORY = 7
+} EFI_MEMORY_TYPE;
+
+void init_memory(memory_map_t mem_map);
+void init_gdt();
+
+void *mmap_allocate_pages(size_t pages);
 
 #endif // MEMORY_H

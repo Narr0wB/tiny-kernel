@@ -94,4 +94,13 @@ void pic_unmask_irq(uint8_t irq);
 void exception_handler(uint64_t irq, uint64_t err, interrupt_info_t *info, registers_t *regs);
 void irq_handler(uint64_t irq);
 
+struct {
+    void (*notifier)(void*);
+    
+    struct notifier_block *prev;
+    struct notifier_block *next;
+} notifier_block;
+
+void register_notifier_block(struct notifier_block *block);
+
 #endif // INT_H

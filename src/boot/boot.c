@@ -147,6 +147,11 @@ EFI_STATUS EFIAPI efi_main(
         } 
     }
 
+    // Allocate memory for all the variables that we need to pass to our kernel
+    bootinfo_t *BootInfo; 
+    UINTN kvPages = (sizeof(bootinfo_t) + 0x1000 - 1) / 0x1000;
+    uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, kvPages, &BootInfo);
+
     Print(L"Kernel successfully loaded!\n");
 
     // Load the memory map
@@ -170,18 +175,11 @@ EFI_STATUS EFIAPI efi_main(
     status = uefi_call_wrapper(BS->GetMemoryMap, 5, &MemoryMapSize, MemoryMap, &MemoryMapKey, &DescriptorSize, &DescriptorVersion);
     if (status != EFI_SUCCESS) { Print(L"Failed to load the memory map! status: %d\n", MemoryMapSize); Halt(); }
 
-    // Allocate memory for all the variables that we need to pass to our kernel
-    bootinfo_t *BootInfo; 
-    UINTN kvPages = (sizeof(bootinfo_t) + 0x1000 - 1) / 0x1000;
-    uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, kvPages, &BootInfo);
-
     framebuffer_t *framebuffer = &BootInfo->framebuffer;
     s = InitializeGraphics(framebuffer);
 
-    BootInfo->memory_map = (memory_descriptor_t*)MemoryMap;
-    BootInfo->memory_map_size = (MemoryMapSize / DescriptorSize);
-    Print(L"%d %d %d", sizeof(memory_descriptor_t), sizeof(EFI_MEMORY_DESCRIPTOR), DescriptorSize);
-    Halt();
+    BootInfo->map.map = (memory_descriptor_t*)MemoryMap;
+    BootInfo->map.size = (MemoryMapSize / DescriptorSize);
     // Print(L"\n\rCurrent framebuffer:\n\rBase: %p\n\rSize: %d\n\rWidth: %u\n\rHeight: %u\n\rScanline Length: %u\n\r\n\r", framebuffer->base_addr, framebuffer->size, framebuffer->width, framebuffer->height, framebuffer->len_scanline);
 
     uefi_call_wrapper(BS->ExitBootServices, ImageHandle, MemoryMapKey);

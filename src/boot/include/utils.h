@@ -24,12 +24,17 @@ typedef struct memory_descriptor {
     vaddr_t     virt_start;
     uint64_t    npages;
     uint64_t    attribute;
+    uint64_t    padding;
 } memory_descriptor_t;
+
+typedef struct memory_map {
+    memory_descriptor_t *map;
+    size_t size;
+} memory_map_t;
 
 typedef struct bootinfo {
     framebuffer_t framebuffer;
-    memory_descriptor_t *memory_map;
-    size_t memory_map_size;
-} bootinfo_t;
+    memory_map_t map;
+} bootinfo_t; 
 
-#endif // UTILS_H
+#endif // BOOT_H

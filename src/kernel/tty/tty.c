@@ -405,6 +405,7 @@ int vsprintf(void *_pc, void *_ps, const char *fmt, va_list args) {
 
                 fmt++;
                 state = PRINTF_STATE_NORMAL;
+                width = 0;
                 break;
             }
         }

@@ -22,6 +22,12 @@ int EFIAPI memcmp(
     return *(unsigned char*)buf1 - *(unsigned char*)buf2;
 }
 
+EFI_STATUS EFIAPI Halt() {
+    UINTN event_index;
+    EFI_STATUS status = uefi_call_wrapper(BS->WaitForEvent, 3, 1, &ST->ConIn->WaitForKey, event_index);
+    return status;
+}
+
 EFI_STATUS EFIAPI InitializeGraphics(
     OUT framebuffer_t *framebuffer
 ) {
@@ -155,7 +161,14 @@ EFI_STATUS EFIAPI efi_main(
     MemoryMap     = NULL;
 
     status = uefi_call_wrapper(BS->GetMemoryMap, 5, &MemoryMapSize, MemoryMap, &MemoryMapKey, &DescriptorSize, &DescriptorVersion);
-    if (status != EFI_SUCCESS) { Print(L"Failed to get the memory map!\n"); }
+    if (status != EFI_BUFFER_TOO_SMALL) { Print(L"Failed to get info about the memory map! status: %d\n", status); Halt(); }
+
+    MemoryMapSize += 2 * DescriptorSize;
+    status = uefi_call_wrapper(BS->AllocatePool, 3, EfiLoaderData, MemoryMapSize, (void**)&MemoryMap);
+    if (status != EFI_SUCCESS) { Print(L"Failed to allocate memory for the memory map!\n"); Halt(); }
+
+    status = uefi_call_wrapper(BS->GetMemoryMap, 5, &MemoryMapSize, MemoryMap, &MemoryMapKey, &DescriptorSize, &DescriptorVersion);
+    if (status != EFI_SUCCESS) { Print(L"Failed to load the memory map! status: %d\n", MemoryMapSize); Halt(); }
 
     // Allocate memory for all the variables that we need to pass to our kernel
     bootinfo_t *BootInfo; 
@@ -165,12 +178,17 @@ EFI_STATUS EFIAPI efi_main(
     framebuffer_t *framebuffer = &BootInfo->framebuffer;
     s = InitializeGraphics(framebuffer);
 
-    // Print the framebuffer information to the screen
-    Print(L"\n\rCurrent framebuffer:\n\rBase: %p\n\rSize: %d\n\rWidth: %u\n\rHeight: %u\n\rScanline Length: %u\n\r\n\r", framebuffer->base_addr, framebuffer->size, framebuffer->width, framebuffer->height, framebuffer->len_scanline);
+    BootInfo->memory_map = (memory_descriptor_t*)MemoryMap;
+    BootInfo->memory_map_size = (MemoryMapSize / DescriptorSize);
+    Print(L"%d %d %d", sizeof(memory_descriptor_t), sizeof(EFI_MEMORY_DESCRIPTOR), DescriptorSize);
+    Halt();
+    // Print(L"\n\rCurrent framebuffer:\n\rBase: %p\n\rSize: %d\n\rWidth: %u\n\rHeight: %u\n\rScanline Length: %u\n\r\n\r", framebuffer->base_addr, framebuffer->size, framebuffer->width, framebuffer->height, framebuffer->len_scanline);
+
+    uefi_call_wrapper(BS->ExitBootServices, ImageHandle, MemoryMapKey);
 
     // Declare and call the kernel entry point;
-    int (*_kernel_entry)(void*) = ( (__attribute__((sysv_abi)) int(*)(void*)) header.e_entry );
-    int code = _kernel_entry((void*)BootInfo);
+    int (*_kernel_entry)(bootinfo_t*) = ( (__attribute__((sysv_abi)) int(*)(bootinfo_t*)) header.e_entry );
+    int code = _kernel_entry(BootInfo);
     /* Print(L"Kernel exited with code %d\n", code); */
     
     return EFI_SUCCESS; 

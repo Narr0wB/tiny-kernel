@@ -4,10 +4,10 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
-typedef uint8_t bool;
-#define TRUE 1 
-#define FALSE 0
+typedef uintptr_t paddr_t;
+typedef uintptr_t vaddr_t;
 
 typedef struct {
     uint64_t r15;

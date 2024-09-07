@@ -1,12 +1,14 @@
 
 #include <tty/tty.h>
+#include <int/int.h>
+#include <memory/memory.h>
 #include <tty/font.h>
 
 static framebuffer_info_t fb_info;
 static console_t console;
 
-static char stdin[4096] = {0};
-static uint16_t stdin_pos = 0;
+char stdin[4096] = {0};
+uint16_t stdin_pos = 0;
 
 void init_tty() {
     init_psf((void*)psf);

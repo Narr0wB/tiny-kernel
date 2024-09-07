@@ -8,6 +8,8 @@ extern void load_idt(idt_descriptor_t *idt_descriptor);
 extern void *isr_stub_table[];
 extern void *irq_table[];
 
+struct notifier_block *head = NULL;
+
 void init_pic(uint8_t offset1, uint8_t offset2) {
     // Remap the PICs
     outb(PIC1_COMMAND_PORT, PIC_ICW1_BASE | PIC_ICW1_ICW4);
@@ -146,12 +148,56 @@ void exception_handler(uint64_t irq, uint64_t err, interrupt_info_t *info, regis
     __asm__ volatile ("cli; hlt");
 }
 
-void irq_handler(uint64_t irq) {
-    if (irq == 1) {
-        // uint8_t key_code = ps2_read_data();
-        // kprintf("got key code %x"EOL, key_code); 
-    } 
 
+void irq_handler(uint64_t irq) {
+    if (!head) { 
+        goto eoi;
+    }
+
+    struct notifier_block *current = head;
+    while (current) {
+        if (irq == current->irq) {
+            int result = current->notifier_call(current, irq, NULL);
+
+            if (result != NOTIFY_OK && result != NOTIFY_DONE) {
+                panic("Interrupt notifier did not exist successfully");
+            }
+        }
+        current = current->next;
+    }
+    
+eoi:
     pic_send_eoi(irq);
 }
 
+// NOTIFIER REGISTERING SYSTEM
+
+void register_notifier_block(struct notifier_block *block) {
+    if (!head) {
+        head = block;
+        return;
+    }
+
+    struct notifier_block *current = head;
+
+    while (current->next) {
+        current = current->next;
+    }
+    current->next = block;
+}
+
+void unregister_notifier_block(struct notifier_block *block) {
+    if (!head) {
+        return;
+    }
+
+    struct notifier_block *current = head;
+
+    while (current->next && current->next != block) {
+        current = current->next;
+    }
+
+    if (current->next) {
+        current->next = current->next->next;
+    }
+}

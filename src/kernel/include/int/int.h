@@ -94,13 +94,22 @@ void pic_unmask_irq(uint8_t irq);
 void exception_handler(uint64_t irq, uint64_t err, interrupt_info_t *info, registers_t *regs);
 void irq_handler(uint64_t irq);
 
-struct {
-    void (*notifier)(void*);
-    
-    struct notifier_block *prev;
+#define NOTIFY_DONE     0x0000
+#define NOTIFY_OK       0x0001
+#define NOTIFY_BAD      0x0002
+#define NOTIFY_STOP     0x0003 
+
+struct notifier_block;
+
+typedef int (*notifier_fn_t) (struct notifier_block *nb, uint64_t action, void *data);
+
+struct notifier_block {
+    notifier_fn_t notifier_call;
     struct notifier_block *next;
-} notifier_block;
+    int irq;
+};
 
 void register_notifier_block(struct notifier_block *block);
+void unregister_notifier_block(struct notifier_block *block);
 
 #endif // INT_H

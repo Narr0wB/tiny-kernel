@@ -34,6 +34,8 @@ typedef struct memory_map {
 typedef struct bootinfo {
     framebuffer_t framebuffer;
     memory_map_t map;
+    paddr_t kernel_load;
+    size_t kernel_pages;
 } bootinfo_t; 
 
 #endif // BOOT_H

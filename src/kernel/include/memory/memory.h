@@ -4,6 +4,8 @@
 
 #include <common.h>
 #include <boot/boot.h>
+#include <util/string.h>
+#include <tty/tty.h>
 
 typedef struct {
     uint16_t limit_low;
@@ -75,9 +77,48 @@ typedef enum {
     EFI_CONVENTIONAL_MEMORY = 7
 } EFI_MEMORY_TYPE;
 
-void init_memory(memory_map_t mem_map);
+static const char *EFI_MEMORY_TYPE_STRING[] = {
+    "EfiReservedMemoryType",
+    "EfiLoaderCode",
+    "EfiLoaderData",
+    "EfiBootServicesCode",
+    "EfiBootServicesData",
+    "EfiRuntimeServicesCode",
+    "EfiRuntimeServicesData",
+    "EfiConventionalMemory",
+    "EfiUnusableMemory",
+    "EfiACPIReclaimMemory",
+    "EfiACPIMemoryNVS",
+    "EfiMemoryMappedIO",
+    "EfiMemoryMappedIOPortSpace",
+    "EfiPalCode",
+};
+
+void init_memory(memory_map_t mem_map, paddr_t kernel_load, size_t kernel_pages);
 void init_gdt();
 
+// MEMORY PAGING 
+
+typedef struct {
+    uint64_t entries[512];
+} page_table_t;
+
+typedef enum {
+    PAGE_FLAG_PRESENT   = 1 << 0,
+    PAGE_FLAG_READWRITE = 1 << 1,
+    PAGE_FLAG_USER      = 1 << 2
+} PAGE_TABLE_FLAGS;
+
+#define PHYS_ADDR_MASK 0xFFFFFFFFFFFFF000
+
+void map_virt_to_phys(vaddr_t virt, paddr_t phys, uint16_t flags);
+void unmap_virt_to_phys(vaddr_t virt);
+
+paddr_t get_phys_from_virt(vaddr_t virt);
+
+void identity_map_mmap(memory_map_t mmap);
+
+// MEMORY ALLOCATION
 void *mmap_allocate_pages(size_t pages);
 
 #endif // MEMORY_H

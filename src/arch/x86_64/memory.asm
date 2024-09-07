@@ -21,3 +21,17 @@ gdt_load:
     mov rsp, rbp
     pop rbp
     ret
+
+
+global load_cr3
+load_cr3:
+    ; SYSV ABI function prologue
+    push rbp
+    mov rbp, rsp
+
+    mov cr3, rdi
+
+    ; SYSV ABI function epilogue
+    mov rsp, rbp
+    pop rbp
+    ret

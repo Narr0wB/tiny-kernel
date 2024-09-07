@@ -10,7 +10,7 @@
 int init(bootinfo_t* init_data) {
     init_video(&init_data->framebuffer);
     init_tty();
-    init_memory(init_data->map, init_data->kernel_load, init_data->kernel_pages);
+    init_memory(init_data->map);
     
     kprintf("Initializing IDT and setting up interrupt service routines...  ");
     init_idt();

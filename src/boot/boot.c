@@ -170,7 +170,7 @@ EFI_STATUS EFIAPI efi_main(
         switch (pHeader.p_type) {
             case PT_LOAD: {
                 int pages = (pHeader.p_memsz + 0x1000 - 1) / 0x1000;
-                Elf64_Addr mSegment = pHeader.p_paddr;
+                Elf64_Addr mSegment = pHeader.p_vaddr;
                 uefi_call_wrapper(BS->AllocatePages, 4, AllocateAddress, EfiLoaderData, pages, &mSegment);
                 uefi_call_wrapper(KernelELF->SetPosition, 2, KernelELF, pHeader.p_offset);
                 UINTN size = pHeader.p_filesz;
@@ -205,7 +205,7 @@ EFI_STATUS EFIAPI efi_main(
     uefi_call_wrapper(BS->FreePool, 1, FileInfo);
     uefi_call_wrapper(BS->FreePool, 1, ProgramHeaders);
 
-    uefi_call_wrapper(BS->ExitBootServices, ImageHandle, MemoryMapKey);
+    // uefi_call_wrapper(BS->ExitBootServices, ImageHandle, MemoryMapKey);
 
     // Declare and call the kernel entry point;
     int (*_kernel_entry)(bootinfo_t*) = ( (__attribute__((sysv_abi)) int(*)(bootinfo_t*)) (header.e_entry) );

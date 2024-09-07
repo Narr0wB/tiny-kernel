@@ -1,4 +1,5 @@
 
+#include "video/video.h"
 #include <memory/memory.h>
 
 memory_map_t _mmap;
@@ -48,14 +49,14 @@ void init_gdt() {
     gdt_load(&GDTdescriptor, GDT_KERNEL_CODE, GDT_KERNEL_DATA);
 }
 
-void init_memory(memory_map_t mem_map, paddr_t kernel_load, size_t kernel_pages) {
+void init_memory(memory_map_t mem_map) {
     _mmap = mem_map;
     init_gdt();
 
     memset(&pml4, 0, sizeof(page_table_t));
+    // identity_map_mmap(_mmap);
 
-    identity_map_mmap(_mmap);
-    load_cr3(&pml4);
+    // load_cr3(&pml4);
 }
 
 // MEMORY PAGING
@@ -76,7 +77,7 @@ void map_virt_to_phys(vaddr_t virt, paddr_t phys, uint16_t flags) {
         pml4.entries[pml4_index] = (uintptr_t)pdpt_address | flags;
     }
 
-    page_table_t *pdpt = (page_table_t*)pml4.entries[pml4_index];
+    page_table_t *pdpt = (page_table_t*)(pml4.entries[pml4_index] & PAGE_ALIGN);
     if (!(pdpt->entries[pdpt_index] & PAGE_FLAG_PRESENT)) {
         void *pdt_address = mmap_allocate_pages(1);
         
@@ -84,7 +85,7 @@ void map_virt_to_phys(vaddr_t virt, paddr_t phys, uint16_t flags) {
         pdpt->entries[pdpt_index] = (uintptr_t)pdt_address | flags;
     }
 
-    page_table_t *pdt = (page_table_t*)pdpt->entries[pdpt_index];
+    page_table_t *pdt = (page_table_t*)(pdpt->entries[pdpt_index] & PAGE_ALIGN);
     if (!(pdt->entries[pdt_index] & PAGE_FLAG_PRESENT)) {
         void *pt_address = mmap_allocate_pages(1);
         
@@ -92,10 +93,8 @@ void map_virt_to_phys(vaddr_t virt, paddr_t phys, uint16_t flags) {
         pdt->entries[pdt_index] = (uintptr_t)pt_address | flags;
     }
 
-    page_table_t *pt = (page_table_t*)pdt->entries[pdt_index];
-    if (!(pt->entries[pt_index] & PAGE_FLAG_PRESENT)) {
-        pt->entries[pt_index] = (phys & PHYS_ADDR_MASK) | flags;
-    }
+    page_table_t *pt = (page_table_t*)(pdt->entries[pdt_index] & PAGE_ALIGN);
+    pt->entries[pt_index] = (phys & PHYS_ADDR_MASK) | flags;
 }
 
 paddr_t get_phys_from_virt(vaddr_t virt) {

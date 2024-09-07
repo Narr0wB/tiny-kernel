@@ -71,7 +71,7 @@ typedef enum {
 #define GDT_USER_CODE 0x18
 #define GDT_USER_DATA 0x20
 
-#define PAGE_SIZE 4096 // 4K page size
+#define PAGE_SIZE 4096 // 4KB page size
 
 typedef enum {
     EFI_CONVENTIONAL_MEMORY = 7
@@ -94,7 +94,7 @@ static const char *EFI_MEMORY_TYPE_STRING[] = {
     "EfiPalCode",
 };
 
-void init_memory(memory_map_t mem_map, paddr_t kernel_load, size_t kernel_pages);
+void init_memory(memory_map_t mem_map);
 void init_gdt();
 
 // MEMORY PAGING 
@@ -109,7 +109,8 @@ typedef enum {
     PAGE_FLAG_USER      = 1 << 2
 } PAGE_TABLE_FLAGS;
 
-#define PHYS_ADDR_MASK 0xFFFFFFFFFFFFF000
+#define PHYS_ADDR_MASK   0xFFFFFFFFFFFFF000
+#define PAGE_ALIGN       0xFFFFFFFFFFFFF000
 
 void map_virt_to_phys(vaddr_t virt, paddr_t phys, uint16_t flags);
 void unmap_virt_to_phys(vaddr_t virt);

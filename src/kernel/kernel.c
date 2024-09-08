@@ -6,8 +6,10 @@
 #include <util/io.h>
 #include <memory/memory.h>
 #include <device/device.h>
+#include <device/serial.h>
 
 int init(bootinfo_t* init_data) {
+    init_serial();
     init_video(&init_data->framebuffer);
     init_tty();
     init_memory(init_data->map);
@@ -41,7 +43,7 @@ __attribute__((aligned(4096))) int _kernel_entry(bootinfo_t* init_data) {
     //     kprintf("%16p"EOL, ptr);
     // }
     //
-    // memory_descriptor_t *current = init_data->map.map + 1;
+    // memory_descriptor_t *current = init_data->map.map + 2;
     // kprintf("Memory segment no. [%d] type: %s || phys start: %16llx || virt start: %16llx || npages: %lld || attributes: %2lld"EOL, 0, EFI_MEMORY_TYPE_STRING[current->type], current->phys_start, current->virt_start, current->npages, current->attribute);
 
     while (1) {

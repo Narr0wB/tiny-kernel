@@ -5,6 +5,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#define PAGE_SIZE 4096
+#define SIZE_TO_PAGES(size) \
+    (size_t)(size + 0x1000 - 1)/0x1000
+
 typedef uintptr_t paddr_t;
 typedef uintptr_t vaddr_t;
 
@@ -35,7 +39,7 @@ typedef struct memory_map {
 typedef struct bootinfo {
     framebuffer_t framebuffer;
     memory_map_t map;
-    paddr_t kernel_load;
+    paddr_t kernel_start;
     size_t kernel_pages;
 } bootinfo_t; 
 

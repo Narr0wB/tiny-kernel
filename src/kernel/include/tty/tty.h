@@ -3,7 +3,6 @@
 #define TTY_H
 
 #include <common.h>
-#include <stdarg.h>
 #include <video/video.h>
 #include <util/string.h>
 
@@ -51,11 +50,7 @@ void tty_show_prompt();
 
 #define EOL "\n"
 
-int putchar(int c);
-int puts(const char *str);
-int kprintf(const char *fmt, ...);
-
-int vsprintf(void *pc, void *ps, const char *fmt, va_list args);
-int sprintf(char *buffer, const char *fmt, ...);
+int tty_putc(char c);
+int tty_puts(const char *str);
 
 #endif // TTY_H

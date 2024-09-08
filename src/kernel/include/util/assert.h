@@ -3,7 +3,7 @@
 #define ASSERT_H
 
 #include <util/io.h>
-#include <panic.h>
+#include <util/panic.h>
 
 #define kassert(EX) do { if (!EX) {panic("Assertion failed: "#EX);} } while (0); 
 

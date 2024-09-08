@@ -3,22 +3,18 @@
 #define IO_H
 
 #include <common.h>
+#include <stdarg.h>
+#include <tty/tty.h>
+#include <device/serial.h>
 
-static inline void outb(uint16_t port, uint8_t val) {
-    __asm__ volatile ( "outb %b0, %w1" : : "a"(val), "Nd"(port) : "memory");
-}
+typedef int (*putc_fn_t)(char);
+typedef int (*puts_fn_t)(const char*);
 
-static inline uint8_t inb(uint16_t port) {
-    uint8_t ret;
-    __asm__ volatile ( "inb %w1, %b0"
-                   : "=a"(ret)
-                   : "Nd"(port)
-                   : "memory");
-    return ret;
-}
+// USER OUTPUT
 
-static inline void io_wait(void) {
-    outb(0x80, 0);
-}
+int vsprintf(putc_fn_t pc, puts_fn_t ps, const char *fmt, va_list args);
+int sprintf(char *buffer, const char *fmt, ...);
+
+int kprintf(const char *fmt, ...);
 
 #endif // IO_H

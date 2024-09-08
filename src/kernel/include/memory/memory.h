@@ -5,7 +5,7 @@
 #include <common.h>
 #include <boot/boot.h>
 #include <util/string.h>
-#include <tty/tty.h>
+#include <util/io.h>
 
 typedef struct {
     uint16_t limit_low;
@@ -72,6 +72,7 @@ typedef enum {
 #define GDT_USER_DATA 0x20
 
 #define PAGE_SIZE 4096 // 4KB page size
+#define SIZE_TO_PAGES(size) (((size_t)size + PAGE_SIZE - 1)/PAGE_SIZE)
 
 typedef enum {
     EFI_CONVENTIONAL_MEMORY = 7
@@ -112,12 +113,25 @@ typedef enum {
 #define PHYS_ADDR_MASK   0xFFFFFFFFFFFFF000
 #define PAGE_ALIGN       0xFFFFFFFFFFFFF000
 
-void map_virt_to_phys(vaddr_t virt, paddr_t phys, uint16_t flags);
-void unmap_virt_to_phys(vaddr_t virt);
+#define SWITCH_PAGE_TREE(tree_addr) \
+    __asm__ volatile (\
+        "movq %0, %%cr3"\
+        :\
+        :   "r" (tree_addr)\
+    )
 
-paddr_t get_phys_from_virt(vaddr_t virt);
+#define GET_PAGE_TREE(tree_addr)\
+    __asm__ volatile (\
+        "movq %%cr3, %0"\
+        : "=r" (tree_addr)\
+    )
 
-void identity_map_mmap(memory_map_t mmap);
+void map_phys_to_virt(page_table_t *p, paddr_t phys, vaddr_t virt, uint16_t flags);
+void unmap_phys_to_virt(page_table_t *p, vaddr_t virt);
+
+paddr_t get_phys_from_virt(page_table_t *p, vaddr_t virt);
+
+void identity_map_mmap(page_table_t *p, memory_map_t mmap);
 
 // MEMORY ALLOCATION
 void *mmap_allocate_pages(size_t pages);

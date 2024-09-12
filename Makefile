@@ -8,7 +8,7 @@ export ARCH = $(BASE)/src/arch/x86_64
 export CC = gcc
 export LD = ld
 export AS = as
-export KERNEL_CFLAGS = -ffreestanding -fno-stack-protector -fshort-wchar -fno-stack-check -Wall -Wpedantic -g
+export KERNEL_CFLAGS = -ffreestanding -fno-stack-protector -fshort-wchar -fno-stack-check -Wall -Wpedantic -g 
 export KERNEL_INCLUDE = $(BASE)/src/kernel/include
 
 BOOTLOADER_LDFLAGS = -shared -Bsymbolic -Lgnu-efi/ -Tgnu-efi/elf_x86_64_efi.lds gnu-efi/crt0-efi-x86_64.o -nostdlib
@@ -21,8 +21,7 @@ BOOT = bootx64
 KERNEL = kernel
 OSNAME = tinyos
 
-KSRCS := $(shell find $(SRCDIR)/kernel -name '*.c')
-OBJS = $(addprefix $(OUTDIR)/kernel/, $(patsubst %.c,%.o,$(notdir $(KSRCS))))
+OBJS := $(shell find $(OUTDIR)/kernel -name '*.o')
 
 setup: 
 	@mkdir -p $(dir $(OUTDIR)/boot/)
@@ -37,7 +36,6 @@ obj:
 	make -C $(SRCDIR)/kernel/int
 	make -C $(SRCDIR)/kernel/tty
 	make -C $(SRCDIR)/kernel/device
-
 
 # Link the kernel obj files into one elf executable
 $(KERNEL).elf: obj 

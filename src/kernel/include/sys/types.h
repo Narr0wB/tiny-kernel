@@ -6,6 +6,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#define NULL ((void*)0)
+
 typedef uintptr_t paddr_t;
 typedef uintptr_t vaddr_t;
 

@@ -4,11 +4,11 @@
 __attribute__((aligned(0x10))) idt_entry_t IDT[256] = {0};
 idt_descriptor_t idt_descriptor = { sizeof(IDT) - 1, (uintptr_t)IDT };
 
-extern void load_idt(idt_descriptor_t *idt_descriptor);
+extern void load_idt(volatile idt_descriptor_t *idt_descriptor);
 extern void *isr_stub_table[];
 extern void *irq_table[];
 
-struct notifier_block *head = NULL;
+static struct notifier_block *head = NULL;
 
 void init_pic(uint8_t offset1, uint8_t offset2) {
     // Remap the PICs
@@ -153,6 +153,8 @@ void irq_handler(uint64_t irq) {
     if (!head) { 
         goto eoi;
     }
+
+    panic("eddu gay");
 
     struct notifier_block *current = head;
     while (current) {

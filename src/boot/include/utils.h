@@ -40,7 +40,7 @@ typedef struct bootinfo {
     framebuffer_t framebuffer;
     memory_map_t map;
     paddr_t kernel_start;
-    size_t kernel_pages;
+    paddr_t kernel_end;
 } bootinfo_t; 
 
 #endif // BOOT_H

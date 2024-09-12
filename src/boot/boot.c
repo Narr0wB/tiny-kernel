@@ -139,9 +139,10 @@ EFI_STATUS EFIAPI efi_main(
             // requested_pages += (pHeader.p_memsz + 0x1000 - 1) / 0x1000;
         }
     }
-
-    paddr_t kernel_start = 0;
-    size_t kernel_pages = 0;
+    
+    paddr_t kernel_offset = 0;
+    paddr_t kernel_start  = 0;
+    size_t kernel_pages   = 0;
   
     for (UINTN i = 0; i < header.e_phnum; ++i) {
         Elf64_Phdr pHeader = ProgramHeaders[i];
@@ -176,6 +177,12 @@ EFI_STATUS EFIAPI efi_main(
     paddr_t kernel_vars_start   = 0;
     paddr_t kernel_vars_end     = 0;
 
+    // Allocate memory for all the variables that we need to pass to our kernel
+    kernel_vars_start = kernel_end;
+    kernel_vars_end   = kernel_end + SIZE_TO_PAGES(sizeof(bootinfo_t)) * PAGE_SIZE;
+    bootinfo_t *BootInfo = (bootinfo_t*)(kernel_vars_start); 
+    uefi_call_wrapper(BS->AllocatePages, 4, AllocateAddress, EfiLoaderData, SIZE_TO_PAGES(sizeof(bootinfo_t)), &BootInfo);
+
     // Load the memory map
     EFI_MEMORY_DESCRIPTOR *MemoryMap;
     UINTN                  MemoryMapSize;
@@ -191,8 +198,8 @@ EFI_STATUS EFIAPI efi_main(
     if (status != EFI_BUFFER_TOO_SMALL) { Print(L"Failed to get info about the memory map! status: %d\n", status); Halt(); }
 
     MemoryMapSize += 2 * DescriptorSize;
-    mmap_start = kernel_end;
-    mmap_end   = kernel_end + SIZE_TO_PAGES(MemoryMapSize) * PAGE_SIZE;
+    mmap_start = kernel_vars_end;
+    mmap_end   = kernel_vars_end + SIZE_TO_PAGES(MemoryMapSize) * PAGE_SIZE;
     MemoryMap  = (EFI_MEMORY_DESCRIPTOR*)(mmap_start);
 
     status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAddress, EfiLoaderData, SIZE_TO_PAGES(MemoryMapSize), &MemoryMap);
@@ -201,12 +208,6 @@ EFI_STATUS EFIAPI efi_main(
     status = uefi_call_wrapper(BS->GetMemoryMap, 5, &MemoryMapSize, MemoryMap, &MemoryMapKey, &DescriptorSize, &DescriptorVersion);
     if (status != EFI_SUCCESS) { Print(L"Failed to load the memory map! status: %d\n", MemoryMapSize); Halt(); }
     
-    // Allocate memory for all the variables that we need to pass to our kernel
-    kernel_vars_start = mmap_end;
-    kernel_vars_end   = mmap_end + SIZE_TO_PAGES(sizeof(bootinfo_t)) * PAGE_SIZE;
-    bootinfo_t *BootInfo = (bootinfo_t*)(kernel_vars_start); 
-    uefi_call_wrapper(BS->AllocatePages, 4, AllocateAddress, EfiLoaderData, SIZE_TO_PAGES(sizeof(bootinfo_t)), &BootInfo);
-
     Print(L"Kernel successfully loaded!\n");
 
     framebuffer_t *framebuffer = &BootInfo->framebuffer;
@@ -215,21 +216,17 @@ EFI_STATUS EFIAPI efi_main(
     BootInfo->map.map = (memory_descriptor_t*)MemoryMap;
     BootInfo->map.size = (MemoryMapSize / DescriptorSize);
     BootInfo->kernel_start = kernel_start;
-    BootInfo->kernel_pages = kernel_pages;
+    BootInfo->kernel_end   = mmap_end;
 
     uefi_call_wrapper(BS->FreePool, 1, FileInfo);
     uefi_call_wrapper(BS->FreePool, 1, ProgramHeaders);
 
-    paddr_t kernel_stack = kernel_vars_end;
-    uefi_call_wrapper(BS->AllocatePages, 4, AllocateAddress, EfiLoaderData, SIZE_TO_PAGES(0x1000), &kernel_stack);
     uefi_call_wrapper(BS->ExitBootServices, ImageHandle, MemoryMapKey);
+
+    Print(L"kernel_end %x kvars_end %x mmap_end %x\n", kernel_end, kernel_vars_end, mmap_end);
     
     // Declare and call the kernel entry point;
     int (*_kernel_entry)(bootinfo_t*) = ( (__attribute__((sysv_abi)) int(*)(bootinfo_t*)) (header.e_entry) );
-
-    __asm__ volatile ("mov %0, %%rdi" :: "r" (BootInfo));
-    // __asm__ volatile ("mov 0, %%rbp" ::);
-    // __asm__ volatile ("mov %-1, %%rsp" :: "r" (kernel_stack));
 
     int code = _kernel_entry(BootInfo);
 

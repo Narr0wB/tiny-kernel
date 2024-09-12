@@ -74,8 +74,26 @@ typedef enum {
 #define PAGE_SIZE 4096 // 4KB page size
 #define SIZE_TO_PAGES(size) (((size_t)size + PAGE_SIZE - 1)/PAGE_SIZE)
 
+typedef struct {
+    paddr_t kernel_start;
+    paddr_t kernel_end;
+} memory_info_t;
+
 typedef enum {
-    EFI_CONVENTIONAL_MEMORY = 7
+    EFI_RESERVED_MEMORY_TYPE,
+    EFI_LOADER_CODE,
+    EFI_LOADER_DATA,
+    EFI_BOOT_SERVICES_CODE,
+    EFI_BOOT_SERVICES_DATA,
+    EFI_RUNTIME_SERVICES_CODE,
+    EFI_RUNTIME_SERVICES_DATA,
+    EFI_CONVENTIONAL_MEMORY,
+    EFI_UNUSABLE_MEMORY,
+    EFI_ACPI_RECLAIM_MEMORY,
+    EFI_ACPI_MEMORY_NVS,
+    EFI_MEMORY_MAPPED_IO,
+    EFI_MEMORY_MAPPED_IO_PS,
+    EFI_PAL_CODE
 } EFI_MEMORY_TYPE;
 
 static const char *EFI_MEMORY_TYPE_STRING[] = {
@@ -95,8 +113,10 @@ static const char *EFI_MEMORY_TYPE_STRING[] = {
     "EfiPalCode",
 };
 
-void init_memory(memory_map_t mem_map);
+void init_memory(memory_map_t mem_map, paddr_t kernel_start, paddr_t kernel_end);
 void init_gdt();
+
+void clean_memory_map(memory_map_t *mem_map);
 
 // MEMORY PAGING 
 
@@ -127,11 +147,11 @@ typedef enum {
     )
 
 void map_phys_to_virt(page_table_t *p, paddr_t phys, vaddr_t virt, uint16_t flags);
-void unmap_phys_to_virt(page_table_t *p, vaddr_t virt);
+void unmap_virt(page_table_t *p, vaddr_t virt);
 
 paddr_t get_phys_from_virt(page_table_t *p, vaddr_t virt);
 
-void identity_map_mmap(page_table_t *p, memory_map_t mmap);
+void identity_map_mmap(page_table_t *p, memory_map_t *mmap);
 
 // MEMORY ALLOCATION
 void *mmap_allocate_pages(size_t pages);

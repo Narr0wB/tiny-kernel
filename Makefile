@@ -1,13 +1,25 @@
 BASE = $(shell pwd)
+UNAME = $(shell uname -s)
 
 export SRCDIR = $(BASE)/src
 export OUTDIR = $(BASE)/bin
 export ASSETS = $(BASE)/assets
 export ARCH = $(BASE)/src/arch/x86_64
 
-export CC = gcc
-export LD = ld
-export AS = as
+ifeq ($(UNAME), Linux)
+	export CC = gcc
+	export LD = ld
+	export AS = as
+	export OBJCOPY = objcopy
+endif 
+
+ifeq ($(UNAME), Darwin)
+	export CC = x86_64-elf-gcc
+	export LD = x86_64-elf-ld
+	export AS = x86_64-elf-as
+	export OBJCOPY = x86_64-elf-objcopy
+endif
+
 export KERNEL_CFLAGS = -ffreestanding -fno-stack-protector -fshort-wchar -fno-stack-check -Wall -Wpedantic -g 
 export KERNEL_INCLUDE = $(BASE)/src/kernel/include
 
@@ -15,7 +27,6 @@ BOOTLOADER_LDFLAGS = -shared -Bsymbolic -Lgnu-efi/ -Tgnu-efi/elf_x86_64_efi.lds 
 BOOTLOADER_CFLAGS = -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -Wall  
 KERNEL_LDFLAGS = -nostdlib 
 
-OBJCOPY = objcopy
 
 BOOT = bootx64
 KERNEL = kernel

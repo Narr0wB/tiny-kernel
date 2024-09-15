@@ -1,5 +1,6 @@
 
 #include <util/io.h>
+#include <util/modules.h>
 
 #define PRINTF_STATE_NORMAL        0
 #define PRINTF_STATE_LENGTH        1
@@ -436,7 +437,7 @@ int kprintf(const char *fmt, ...) {
     va_copy(args_tty, args_serial);
     
     int ret = vsprintf(serial_putc, serial_puts, fmt, args_serial);
-    // if (IS_INITIALIZED(TTY_MODULE))
+    if (IS_INITIALIZED(TTY_MODULE))
     {
         ret = vsprintf(tty_putc, tty_puts, fmt, args_tty);
     }

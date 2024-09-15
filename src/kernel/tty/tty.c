@@ -1,8 +1,9 @@
 
 #include <tty/tty.h>
-#include <int/int.h>
-#include <memory/memory.h>
 #include <tty/font.h>
+#include <util/modules.h>
+
+int TTY_MODULE = 0;
 
 static framebuffer_info_t fb_info;
 static console_t console;
@@ -20,6 +21,8 @@ void init_tty() {
     console.padding_y = 0;
     console.cols = (fb_info.len_scanline - 2 * (console.padding_x * FONT_WIDTH)) / FONT_WIDTH;
     console.rows = (fb_info.height - 2 * (console.padding_y * console.font.header.character_size)) / console.font.header.character_size;
+    
+    INITIALIZED(TTY_MODULE);
 }
 
 int init_psf(void *data) {

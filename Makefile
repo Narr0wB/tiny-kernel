@@ -11,6 +11,7 @@ ifeq ($(UNAME), Linux)
 	export LD = ld
 	export AS = as
 	export OBJCOPY = objcopy
+	export GDB = gdb
 endif 
 
 ifeq ($(UNAME), Darwin)
@@ -18,6 +19,7 @@ ifeq ($(UNAME), Darwin)
 	export LD = x86_64-elf-ld
 	export AS = x86_64-elf-as
 	export OBJCOPY = x86_64-elf-objcopy
+	export GDB = x86_64-elf-gdb
 endif
 
 export KERNEL_CFLAGS = -ffreestanding -fno-stack-protector -fshort-wchar -fno-stack-check -Wall -Wpedantic -g 
@@ -25,14 +27,11 @@ export KERNEL_INCLUDE = $(BASE)/src/kernel/include
 
 BOOTLOADER_LDFLAGS = -shared -Bsymbolic -Lgnu-efi/ -Tgnu-efi/elf_x86_64_efi.lds gnu-efi/crt0-efi-x86_64.o -nostdlib
 BOOTLOADER_CFLAGS = -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -Wall  
-KERNEL_LDFLAGS = -nostdlib 
-
+KERNEL_LDFLAGS = -nostdlib
 
 BOOT = bootx64
 KERNEL = kernel
 OSNAME = tinyos
-
-OBJS := $(shell find $(OUTDIR)/kernel -name '*.o')
 
 setup: 
 	@mkdir -p $(dir $(OUTDIR)/boot/)
@@ -50,7 +49,7 @@ obj:
 
 # Link the kernel obj files into one elf executable
 $(KERNEL).elf: obj 
-	$(LD) $(KERNEL_LDFLAGS) -T$(ARCH)/kernel.ld -o $(OUTDIR)/kernel/$(KERNEL).elf $(OBJS) 
+	$(LD) $(KERNEL_LDFLAGS) -T$(ARCH)/kernel.ld -o $(OUTDIR)/kernel/$(KERNEL).elf $(OUTDIR)/kernel/*.o 
 
 # Create the efi application
 $(BOOT): $(SRCDIR)/boot/*.c
@@ -73,4 +72,4 @@ run:
 
 debug: 
 	qemu-system-x86_64 -cpu qemu64 -bios OVMF.fd -s -S -drive file=$(OUTDIR)/$(OSNAME).img,if=ide & disown
-	gdb $(OUTDIR)/kernel/$(KERNEL).elf --eval-command="target remote :1234"
+	$(GDB) $(OUTDIR)/kernel/$(KERNEL).elf --eval-command="target remote :1234"

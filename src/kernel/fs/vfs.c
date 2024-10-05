@@ -18,8 +18,6 @@ int mount_filesystem(struct mount *mnt) {
         }
     }
     
-    mnt->fs->root = mnt->root; 
-
     mounted_fs[current_mounted] = mnt;
     return 0;
 }

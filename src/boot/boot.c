@@ -7,6 +7,8 @@
 #include "efidef.h"
 #include <utils.h>
 
+// TODO: Map the kernel to the higher half of the virtual memory address spaces
+
 int EFIAPI memcmp(
     const void *buf1, 
     const void *buf2, 

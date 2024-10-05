@@ -3,8 +3,9 @@
 #define KEYBOARD_H
 
 #include <device/ps2.h>
-#include <int/int.h>
+#include <int/notifier.h>
 #include <memory/memory.h>
+#include <util/panic.h>
 
 typedef enum { 
     VK_ESCAPE = 0x01, 

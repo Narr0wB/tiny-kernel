@@ -22,7 +22,7 @@ ifeq ($(UNAME), Darwin)
 	export GDB = x86_64-elf-gdb
 endif
 
-export KERNEL_CFLAGS = -ffreestanding -fno-stack-protector -fshort-wchar -fno-stack-check -Wall -Wpedantic -g 
+export KERNEL_CFLAGS = -ffreestanding -fno-stack-protector -fshort-wchar -fno-stack-check -Wall -Wpedantic -g -O1 
 export KERNEL_INCLUDE = $(BASE)/src/kernel/include
 
 BOOTLOADER_LDFLAGS = -shared -Bsymbolic -Lgnu-efi/ -Tgnu-efi/elf_x86_64_efi.lds gnu-efi/crt0-efi-x86_64.o -nostdlib

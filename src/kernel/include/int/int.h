@@ -8,6 +8,7 @@
 #include <util/io.h>
 #include <device/ps2.h>
 #include <sys/types.h>
+#include <int/notifier.h>
 
 typedef struct {
     uint16_t isr_addr_low;
@@ -32,7 +33,6 @@ typedef struct {
     uintptr_t ss;
 } __attribute__((packed)) interrupt_info_t;
 
-
 typedef enum {
     IDT_FLAGS_GATE_INT          = 0xE,
     IDT_FLAGS_GATE_TRP          = 0xF,
@@ -45,6 +45,11 @@ typedef enum {
     IDT_FLAG_PRESENT            = 0x80
 } IDT_FLAGS;
 
+#define LOAD_IDT(addr) __asm__ volatile (\
+    "lidt (%0);"\
+    "sti"\
+    :: "r" (addr))
+
 void init_idt();
 
 void idt_set_gate(uint8_t interrupt, uintptr_t addr, uint16_t segment, uint8_t flags);
@@ -52,6 +57,7 @@ void idt_enable_gate(uint8_t interrupt);
 void idt_disable_gate(uint8_t interrupt);
 
 // PIC inherent stuff
+
 #define PIC1_COMMAND_PORT       0x20
 #define PIC2_COMMAND_PORT       0xA0
 
@@ -93,23 +99,5 @@ void pic_unmask_irq(uint8_t irq);
 
 void exception_handler(uint64_t irq, uint64_t err, interrupt_info_t *info, registers_t *regs);
 void irq_handler(uint64_t irq);
-
-#define NOTIFY_DONE     0x0000
-#define NOTIFY_OK       0x0001
-#define NOTIFY_BAD      0x0002
-#define NOTIFY_STOP     0x0003 
-
-struct notifier_block;
-
-typedef int (*notifier_fn_t) (struct notifier_block *nb, uint64_t action, void *data);
-
-struct notifier_block {
-    notifier_fn_t notifier_call;
-    struct notifier_block *next;
-    int irq;
-};
-
-void register_notifier_block(struct notifier_block *block);
-void unregister_notifier_block(struct notifier_block *block);
 
 #endif // INT_H

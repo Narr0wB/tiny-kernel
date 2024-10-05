@@ -25,8 +25,9 @@ struct inode_ops {
 };
 
 struct dentry {
-    const char   *path;
+    const char *path;
     struct inode *inode;
+    struct dentry *children;
 };
 
 struct inode {
@@ -43,8 +44,7 @@ struct mount {
 };
 
 struct fs {
-    const char name[MAX_NAME_SIZE];
-    struct superblock *sb;
+    const char *name;
     int (*mount) (struct mount *, struct fs *);
 };
 

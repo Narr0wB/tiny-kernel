@@ -71,8 +71,16 @@ typedef enum {
 #define GDT_USER_CODE 0x18
 #define GDT_USER_DATA 0x20
 
+
+#define PAGE_SHIFT 12
+#define PAGE_SIZE (1ULL << PAGE_SHIFT)
+#define PAGE_MASK (~(PAGE_SIZE-1))
 #define PAGE_SIZE 4096 // 4KB page size
 #define SIZE_TO_PAGES(size) (((size_t)size + PAGE_SIZE - 1)/PAGE_SIZE)
+
+#define PAGE_ALIGN_DOWN(addr)       (addr & PAGE_MASK)
+#define PAGE_ALIGN_UP(addr)         (addr + (PAGE_SIZE - addr % PAGE_SIZE))
+#define PHYS_ADDR_MASK              0xFFFFFFFFFFFFF000
 
 typedef struct {
     paddr_t kernel_start;
@@ -129,9 +137,6 @@ typedef enum {
     PAGE_FLAG_READWRITE = 1 << 1,
     PAGE_FLAG_USER      = 1 << 2
 } PAGE_TABLE_FLAGS;
-
-#define PHYS_ADDR_MASK   0xFFFFFFFFFFFFF000
-#define PAGE_ALIGN       0xFFFFFFFFFFFFF000
 
 #define SWITCH_PAGE_TREE(tree_addr) \
     __asm__ volatile (\

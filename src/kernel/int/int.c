@@ -4,11 +4,9 @@
 __attribute__((aligned(0x10))) idt_entry_t IDT[256] = {0};
 idt_descriptor_t idt_descriptor = { sizeof(IDT) - 1, (uintptr_t)IDT };
 
-extern void load_idt(volatile idt_descriptor_t *idt_descriptor);
 extern void *isr_stub_table[];
 extern void *irq_table[];
-
-static struct notifier_block *head = NULL;
+extern struct notifier_block *head;
 
 void init_pic(uint8_t offset1, uint8_t offset2) {
     // Remap the PICs
@@ -120,7 +118,7 @@ void init_idt() {
 
     init_pic(0x20, 0x28);
     pic_mask_irq(0);
-    load_idt(&idt_descriptor);
+    LOAD_IDT(&idt_descriptor);
 }
 
 void idt_set_gate(uint8_t interrupt, uintptr_t addr, uint16_t segment, uint8_t flags) {
@@ -154,8 +152,6 @@ void irq_handler(uint64_t irq) {
         goto eoi;
     }
 
-    panic("eddu gay");
-
     struct notifier_block *current = head;
     while (current) {
         if (irq == current->irq) {
@@ -170,36 +166,4 @@ void irq_handler(uint64_t irq) {
     
 eoi:
     pic_send_eoi(irq);
-}
-
-// NOTIFIER REGISTERING SYSTEM
-
-void register_notifier_block(struct notifier_block *block) {
-    if (!head) {
-        head = block;
-        return;
-    }
-
-    struct notifier_block *current = head;
-
-    while (current->next) {
-        current = current->next;
-    }
-    current->next = block;
-}
-
-void unregister_notifier_block(struct notifier_block *block) {
-    if (!head) {
-        return;
-    }
-
-    struct notifier_block *current = head;
-
-    while (current->next && current->next != block) {
-        current = current->next;
-    }
-
-    if (current->next) {
-        current->next = current->next->next;
-    }
 }

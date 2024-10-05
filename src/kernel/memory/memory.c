@@ -1,5 +1,4 @@
 
-#include "boot/boot.h"
 #include <memory/memory.h>
 
 memory_map_t _mmap;
@@ -57,10 +56,10 @@ void init_memory(memory_map_t mem_map, paddr_t kernel_start, paddr_t kernel_end)
     _mem_info.kernel_end  = kernel_end;
 
     clean_memory_map(&_mmap);
-    for (int i = 0; i < _mmap.size; ++i) {
-        memory_descriptor_t *current = (memory_descriptor_t*)((uint8_t*)_mmap.map + i * sizeof(memory_descriptor_t));
-        kprintf("Memory segment no. [%d] type: %s || phys start: %16llx || virt start: %16llx || npages: %lld || attributes: %2lld"EOL, i, EFI_MEMORY_TYPE_STRING[current->type], current->phys_start, current->virt_start, current->npages, current->attribute);
-    }
+    // for (int i = 0; i < _mmap.size; ++i) {
+    //     memory_descriptor_t *current = (memory_descriptor_t*)((uint8_t*)_mmap.map + i * sizeof(memory_descriptor_t));
+    //     kprintf("Memory segment no. [%d] type: %s || phys start: %16llx || virt start: %16llx || npages: %lld || attributes: %2lld"EOL, i, EFI_MEMORY_TYPE_STRING[current->type], current->phys_start, current->virt_start, current->npages, current->attribute);
+    // }
 
     memset(&kernel_pml4, 0, sizeof(page_table_t));
     identity_map_mmap(&kernel_pml4, &_mmap);
@@ -135,7 +134,7 @@ void map_phys_to_virt(page_table_t *pml4, paddr_t phys, vaddr_t virt, uint16_t f
         pml4->entries[pml4_index] = (uintptr_t)pdpt_address | flags;
     }
 
-    page_table_t *pdpt = (page_table_t*)(pml4->entries[pml4_index] & PAGE_ALIGN);
+    page_table_t *pdpt = (page_table_t*)(pml4->entries[pml4_index] & PAGE_MASK);
     if (!(pdpt->entries[pdpt_index] & PAGE_FLAG_PRESENT)) {
         void *pdt_address = mmap_allocate_pages(1);
         
@@ -143,7 +142,7 @@ void map_phys_to_virt(page_table_t *pml4, paddr_t phys, vaddr_t virt, uint16_t f
         pdpt->entries[pdpt_index] = (uintptr_t)pdt_address | flags;
     }
 
-    page_table_t *pdt = (page_table_t*)(pdpt->entries[pdpt_index] & PAGE_ALIGN);
+    page_table_t *pdt = (page_table_t*)(pdpt->entries[pdpt_index] & PAGE_MASK);
     if (!(pdt->entries[pdt_index] & PAGE_FLAG_PRESENT)) {
         void *pt_address = mmap_allocate_pages(1);
         
@@ -151,7 +150,7 @@ void map_phys_to_virt(page_table_t *pml4, paddr_t phys, vaddr_t virt, uint16_t f
         pdt->entries[pdt_index] = (uintptr_t)pt_address | flags;
     }
 
-    page_table_t *pt = (page_table_t*)(pdt->entries[pdt_index] & PAGE_ALIGN);
+    page_table_t *pt = (page_table_t*)(pdt->entries[pdt_index] & PAGE_MASK);
     pt->entries[pt_index] = (phys & PHYS_ADDR_MASK) | flags;
 }
 
@@ -165,17 +164,17 @@ void unmap_virt(page_table_t *pml4, vaddr_t virt) {
         return;    
     }
 
-    page_table_t *pdpt = (page_table_t*)(pml4->entries[pml4_index] & PAGE_ALIGN);
+    page_table_t *pdpt = (page_table_t*)(pml4->entries[pml4_index] & PAGE_MASK);
     if (!(pdpt->entries[pdpt_index] & PAGE_FLAG_PRESENT)) {
         return;
     }
 
-    page_table_t *pdt = (page_table_t*)(pdpt->entries[pdpt_index] & PAGE_ALIGN);
+    page_table_t *pdt = (page_table_t*)(pdpt->entries[pdpt_index] & PAGE_MASK);
     if (!(pdt->entries[pdt_index] & PAGE_FLAG_PRESENT)) {
         return;
     }
 
-    page_table_t *pt = (page_table_t*)(pdt->entries[pdt_index] & PAGE_ALIGN);
+    page_table_t *pt = (page_table_t*)(pdt->entries[pdt_index] & PAGE_MASK);
     if (!(pt->entries[pt_index] & PAGE_FLAG_PRESENT)) {
         return;
     }
@@ -193,17 +192,17 @@ paddr_t get_phys_from_virt(page_table_t *pml4, vaddr_t virt) {
         return 0;    
     }
 
-    page_table_t *pdpt = (page_table_t*)(pml4->entries[pml4_index] & PAGE_ALIGN);
+    page_table_t *pdpt = (page_table_t*)(pml4->entries[pml4_index] & PAGE_MASK);
     if (!(pdpt->entries[pdpt_index] & PAGE_FLAG_PRESENT)) {
         return 0;
     }
 
-    page_table_t *pdt = (page_table_t*)(pdpt->entries[pdpt_index] & PAGE_ALIGN);
+    page_table_t *pdt = (page_table_t*)(pdpt->entries[pdpt_index] & PAGE_MASK);
     if (!(pdt->entries[pdt_index] & PAGE_FLAG_PRESENT)) {
         return 0;
     }
 
-    page_table_t *pt = (page_table_t*)(pdt->entries[pdt_index] & PAGE_ALIGN);
+    page_table_t *pt = (page_table_t*)(pdt->entries[pdt_index] & PAGE_MASK);
     if (!(pt->entries[pt_index] & PAGE_FLAG_PRESENT)) {
         return 0;
     }

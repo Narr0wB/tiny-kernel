@@ -27,6 +27,7 @@ int keyboard_notifier(struct notifier_block *b, uint64_t a, void *d) {
     //     keycode_t code = { .key = (uint8_t)key, .modifiers = state.modifiers };
     //     
     // }
+    panic("pietro gay");
     
     return NOTIFY_OK;
 }

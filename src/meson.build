@@ -1,5 +1,5 @@
 
 # Include all modules
 
-# subdir('boot')
+subdir('boot')
 subdir('kernel')

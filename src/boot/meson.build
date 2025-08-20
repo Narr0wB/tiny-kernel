@@ -1,6 +1,14 @@
 
 boot_sources = files('boot.c')
 
+gnu_efi_dir = meson.source_root() / 'gnu-efi'
+efi_ldscript = gnu_efi_dir / 'elf_x86_64_efi.lds' 
+efi_libs = ['-lgnuefi', '-lefi']
+
+cc = meson.get_compiler('c')
+ld = find_program('ld')
+objcopy = find_program('objcopy')
+
 boot_cflags = [
   '-mno-red-zone',
   '-fno-stack-protector',
@@ -12,46 +20,37 @@ boot_cflags = [
   '-I' + meson.current_source_dir() / 'include',
 ]
 
-gnu_efi = meson.source_root() / 'gnu-efi'
-efi_ldscript = gnu_efi / 'elf_x86_64_efi.lds'  # GNU-EFI linker script
-efi_libs = ['-lgnuefi', '-lefi']  # UEFI libraries
-
 boot_ldflags = [
-    '-shared',
-    '-Bsymbolic',
-    '-L' + gnu_efi,
-    '-nostdlib',
-    '-T' + efi_ldscript,
-  ] + efi_libs
-
-# Build shared object (intermediate step)
+  '-shared',
+  '-Bsymbolic',
+  '-L' + gnu_efi_dir,
+  '-T' + efi_ldscript,
+  '-nostdlib'
+] 
 
 boot_obj = custom_target('boot.o',
   input: boot_sources,
   output: 'boot.o',
   command: [
-    'x86_64-elf-gcc' ]
-    + 
-    boot_cflags 
-    + ['-o', '@OUTPUT@',
-    '-c',
-    '@INPUT@'
+    cc.cmd_array(),
+    boot_cflags,
+    '-c', '@INPUT@',
+    '-o', '@OUTPUT@'
   ],
   depend_files: [boot_sources]
 )
 
-boot_elf = custom_target('boot.elf',
+boot_elf = custom_target('boot.so',
   input: [
-    boot_obj,
-    gnu_efi / 'crt0-efi-x86_64.o'
+    gnu_efi_dir / 'crt0-efi-x86_64.o',
+    boot_obj
   ],
   output: 'boot.so',
   command: [
-    'x86_64-elf-ld']
-    + boot_ldflags
-    + ['@INPUT1@',  # crt0-efi-x86_64.o
-    '@INPUT0@',  # boot.o
-    '-o', '@OUTPUT@'
+    ld, 
+    boot_ldflags,
+    '@INPUT@', '-o', '@OUTPUT@',
+    efi_libs
   ]
 )
 
@@ -60,7 +59,7 @@ boot_efi = custom_target('boot.efi',
   input: boot_elf,
   output: 'bootx64.efi',
   command: [
-    'objcopy',
+    objcopy,
     '-j', '.text',
     '-j', '.sdata',
     '-j', '.data',
@@ -72,7 +71,7 @@ boot_efi = custom_target('boot.efi',
     '-j', '.rel.*',
     '-j', '.rela.*',
     '-j', '.reloc',
-    '--target=efi-app-x86_64',
+    '--target', 'efi-app-x86_64',
     '--subsystem=10',
     '@INPUT@',
     '@OUTPUT@',

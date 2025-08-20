@@ -143,7 +143,6 @@ EFI_STATUS EFIAPI efi_main(
     }
     
     paddr_t kernel_offset = 0;
-    paddr_t kernel_start  = 0;
     size_t kernel_pages   = 0;
   
     for (UINTN i = 0; i < header.e_phnum; ++i) {
@@ -162,8 +161,9 @@ EFI_STATUS EFIAPI efi_main(
                 uefi_call_wrapper(KernelELF->Read, 3, KernelELF, &size, (void*)mSegment);
                 Print(L"Loading segment at addr %p\n", mSegment);
 
-                if (kernel_start == 0) {
-                    kernel_start = mSegment;
+                // Keep track of the offset of the first segment
+                if (kernel_offset == 0) {
+                    kernel_offset = mSegment;
                 }
 
                 kernel_pages += pages;
@@ -173,7 +173,7 @@ EFI_STATUS EFIAPI efi_main(
     }
 
     // Calculate the address after the kernel where to put memory map and boot variables
-    paddr_t kernel_end          = (paddr_t) kernel_pages * PAGE_SIZE; 
+    paddr_t kernel_end          = kernel_offset + (paddr_t) kernel_pages * PAGE_SIZE; 
     paddr_t mmap_start          = 0;
     paddr_t mmap_end            = 0;
     paddr_t kernel_vars_start   = 0;
@@ -217,7 +217,7 @@ EFI_STATUS EFIAPI efi_main(
 
     BootInfo->map.map = (memory_descriptor_t*)MemoryMap;
     BootInfo->map.size = (MemoryMapSize / DescriptorSize);
-    BootInfo->kernel_start = kernel_start;
+    BootInfo->kernel_start = kernel_offset;
     BootInfo->kernel_end   = mmap_end;
 
     uefi_call_wrapper(BS->FreePool, 1, FileInfo);
@@ -226,7 +226,8 @@ EFI_STATUS EFIAPI efi_main(
     uefi_call_wrapper(BS->ExitBootServices, ImageHandle, MemoryMapKey);
 
     Print(L"kernel_end %x kvars_end %x mmap_end %x\n", kernel_end, kernel_vars_end, mmap_end);
-    
+    Print(L"kernel_entry %x", header.e_entry);
+
     // Declare and call the kernel entry point;
     int (*_kernel_entry)(bootinfo_t*) = ( (__attribute__((sysv_abi)) int(*)(bootinfo_t*)) (header.e_entry) );
 

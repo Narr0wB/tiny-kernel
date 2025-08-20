@@ -80,6 +80,7 @@ typedef enum {
 
 #define PAGE_ALIGN_DOWN(addr)       (addr & PAGE_MASK)
 #define PAGE_ALIGN_UP(addr)         (addr + (PAGE_SIZE - addr % PAGE_SIZE))
+#define IS_PAGE_ALIGNED(addr)       (! (addr & ~PAGE_MASK))
 #define PHYS_ADDR_MASK              0xFFFFFFFFFFFFF000
 
 typedef struct {
@@ -153,12 +154,17 @@ typedef enum {
 
 void map_phys_to_virt(page_table_t *p, paddr_t phys, vaddr_t virt, uint16_t flags);
 void unmap_virt(page_table_t *p, vaddr_t virt);
-
 paddr_t get_phys_from_virt(page_table_t *p, vaddr_t virt);
 
 void identity_map_mmap(page_table_t *p, memory_map_t *mmap);
 
-// MEMORY ALLOCATION
+// 16:18 - 43%
+// 16:27 - 41%
+// 16:54 - 36%
+// 17:16 - 31% 
+// 18:06 - 21%
+
+// TEMPORARY MEMORY ALLOCATION
 void *mmap_allocate_pages(size_t pages);
 
 #endif // MEMORY_H

@@ -1,6 +1,15 @@
 {
     "files.associations": {
         "int.h": "c",
-        "valloc.h": "c"
-    }
+        "valloc.h": "c",
+        "common.h": "c",
+        "types.h": "c",
+        "stdint.h": "c",
+        "stddef.h": "c",
+        "memory.h": "c",
+        "keyboard.h": "c",
+        "palloc.h": "c",
+        "inode.h": "c"
+    },
+    "mesonbuild.configureOnOpen": false
 }

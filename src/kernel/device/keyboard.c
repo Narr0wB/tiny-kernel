@@ -1,9 +1,6 @@
 
 #include <device/keyboard.h>
 
-extern char stdin[];
-extern uint16_t stdin_pos;
-
 uint8_t key_buffer[10];
 size_t buffer_index;
 keycode_t state;
@@ -27,13 +24,13 @@ int keyboard_notifier(struct notifier_block *b, uint64_t a, void *d) {
     //     keycode_t code = { .key = (uint8_t)key, .modifiers = state.modifiers };
     //     
     // }
-    panic("pietro gay");
+    panic("edduard o' gea");
     
     return NOTIFY_OK;
 }
 
 void init_keyboard() {
-    struct notifier_block *block = mmap_allocate_pages(1); 
+    struct notifier_block *block = kpalloc(); 
     block->notifier_call = keyboard_notifier; 
     block->next = NULL;
     block->irq = 1;

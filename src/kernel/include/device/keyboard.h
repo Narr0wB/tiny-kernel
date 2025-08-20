@@ -4,8 +4,9 @@
 
 #include <device/ps2.h>
 #include <int/notifier.h>
-#include <memory/memory.h>
 #include <util/panic.h>
+#include <memory/memory.h>
+#include <memory/palloc.h>
 
 typedef enum { 
     VK_ESCAPE = 0x01, 
@@ -91,18 +92,18 @@ typedef enum {
     VK_KP3,
     VK_KP0,
     VK_KPDOT
-} VirtualKey;
+} vk_t;
 
 typedef enum {
     SHIFT = 0b10000000,
     CTRL  = 0b01000000,
     ALT   = 0b00100000,
-} Modifiers;
+} kmod_t;
 
 typedef enum {
     PRESSED  = 0b00000001,
     RELEASED = 0b00000000 
-} State;
+} kstate_t;
 
 typedef struct {
     uint8_t modifiers;

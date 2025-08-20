@@ -5,6 +5,7 @@
 #include <tty/tty.h>
 #include <util/io.h>
 #include <memory/memory.h>
+#include <memory/palloc.h>
 #include <device/device.h>
 #include <device/serial.h>
 
@@ -21,6 +22,7 @@ int init(bootinfo_t* init_data) {
 
     kprintf("Initializing GDT and kernel memory paging... ");
     init_memory(init_data->map, init_data->kernel_start, init_data->kernel_end);
+    init_allocator(init_data->map);
     kprintf("DONE\n");
     
     kprintf("Initializing IDT and setting up interrupt service routines...  ");
@@ -40,9 +42,6 @@ __attribute__((aligned(4096))) int _kernel_entry(bootinfo_t* init_data) {
     __asm__ volatile ("mov %0, %%rbp" :: "i" (KSTACK_BASE));
 
     init(init_data);
-
-    int eddu = 0;
-    kprintf("I changed the stack, and everything is working, and now the new stack is %p", &eddu);
 
     while (1) {
         __asm__("hlt");

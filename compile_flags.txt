@@ -1,2 +1,2 @@
 -Isrc/boot/include
--Isrc/kernel/include
+-Isrc/include

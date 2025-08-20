@@ -56,10 +56,6 @@ void init_memory(memory_map_t mem_map, paddr_t kernel_start, paddr_t kernel_end)
     _mem_info.kernel_end  = kernel_end;
 
     clean_memory_map(&_mmap);
-    // for (int i = 0; i < _mmap.size; ++i) {
-    //     memory_descriptor_t *current = (memory_descriptor_t*)((uint8_t*)_mmap.map + i * sizeof(memory_descriptor_t));
-    //     kprintf("Memory segment no. [%d] type: %s || phys start: %16llx || virt start: %16llx || npages: %lld || attributes: %2lld"EOL, i, EFI_MEMORY_TYPE_STRING[current->type], current->phys_start, current->virt_start, current->npages, current->attribute);
-    // }
 
     memset(&kernel_pml4, 0, sizeof(page_table_t));
     identity_map_mmap(&kernel_pml4, &_mmap);

@@ -1,14 +1,29 @@
 #!/bin/bash
 
+
+
 MESON_OPTIONALS=""
 MESON_CROSS_INI=""
+NINJA_SUPPRESS_WARNINGS=false
 
 OUTDIR="./bin"
 OSNAME="tinyos"
 
-if [ "${1-}" == "--clean" ]; then
-    MESON_OPTIONALS="--wipe"
-fi
+
+for arg in "$@"; do
+    case $arg in
+        --clean) MESON_OPTIONALS="--wipe" ;; 
+        --suppress-warnings|-s) NINJA_SUPPRESS_WARNINGS=true ;;
+        --help|-h) 
+            echo "Usage: $0 [--clean] [--suppress-warnings|-s]"
+            exit 0
+        ;;
+        *) 
+            echo "Unknown arg: $arg" 
+            exit 1
+        ;;
+    esac
+done
 
 case "$(uname -s)" in 
     Linux)  MESON_CROSS_INI="linux-x86.ini" ;;
@@ -17,10 +32,15 @@ esac
 
 # Configure and build kernel
 meson setup $MESON_OPTIONALS build/ --cross-file $MESON_CROSS_INI --prefix /kernel
-ninja -C build/
 
-cp build/src/kernel/kernel.elf bin/kernel/
-cp build/src/boot/bootx64.efi bin/boot/
+if [ "$NINJA_SUPPRESS_WARNINGS" = true ]; then
+    ninja -C build/ 2>&1 | grep -E -i "(error|failed|stop|undefined)" | head -20
+else
+    ninja -C build/ 
+fi
+
+cp build/src/kernel.elf bin/kernel/
+cp build/uefi-bootloader/bootx64.efi bin/boot/
 
 dd if=/dev/zero of=$OUTDIR/$OSNAME.img bs=512 count=93750
 

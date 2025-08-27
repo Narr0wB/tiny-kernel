@@ -52,9 +52,10 @@ $(KERNEL).elf: obj
 	$(LD) $(KERNEL_LDFLAGS) -T$(ARCH)/kernel.ld -o $(OUTDIR)/kernel/$(KERNEL).elf $(OUTDIR)/kernel/*.o 
 
 # Create the efi application
-$(BOOT): $(SRCDIR)/boot/*.c
-	$(CC) $(BOOTLOADER_CFLAGS) -I$(SRCDIR)/boot/include -c $^ -o $(OUTDIR)/boot/$(BOOT).o
-	$(LD) $(BOOTLOADER_LDFLAGS) $(OUTDIR)/boot/$(BOOT).o -o $(OUTDIR)/boot/$(BOOT).so -lgnuefi -lefi 
+boot: $(SRCDIR)/boot/*.c
+	$(CC) $(BOOTLOADER_CFLAGS) -I$(SRCDIR)/boot/include -c $(SRCDIR)/boot/boot.c -o $(OUTDIR)/boot/$(BOOT).o
+	$(CC) $(BOOTLOADER_CFLAGS) -I$(SRCDIR)/boot/include -c $(SRCDIR)/boot/vmap.c -o $(OUTDIR)/boot/vmap.o
+	$(LD) $(BOOTLOADER_LDFLAGS) $(OUTDIR)/boot/$(BOOT).o $(OUTDIR)/boot/vmap.o -o $(OUTDIR)/boot/$(BOOT).so -lgnuefi -lefi
 	$(OBJCOPY) -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 $(OUTDIR)/boot/$(BOOT).so $(OUTDIR)/boot/$(BOOT).efi
 
 # Create the image file and copy the efi application (bootloader) to the efi partition of the image
@@ -70,8 +71,8 @@ buildimg: setup
 	mcopy -i $(OUTDIR)/$(OSNAME).img $(OUTDIR)/kernel/$(KERNEL).elf ::/bin/
 
 run:
-	qemu-system-x86_64 -cpu qemu64 -d int -no-shutdown -no-reboot -bios OVMF.fd -drive file=$(OUTDIR)/$(OSNAME).img,if=ide
+	qemu-system-x86_64 -m 2G -cpu qemu64 -d int -no-shutdown -no-reboot -bios OVMF.fd -drive file=$(OUTDIR)/$(OSNAME).img,if=ide
 
 debug: 
-	qemu-system-x86_64 -cpu qemu64 -bios OVMF.fd -s -S -drive file=$(OUTDIR)/$(OSNAME).img,if=ide & disown
+	qemu-system-x86_64 -m 2G -cpu qemu64 -bios OVMF.fd -s -S -drive file=$(OUTDIR)/$(OSNAME).img,if=ide & disown
 	$(GDB) $(OUTDIR)/kernel/$(KERNEL).elf --eval-command="target remote :1234"

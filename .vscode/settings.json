@@ -2,14 +2,28 @@
     "files.associations": {
         "int.h": "c",
         "valloc.h": "c",
-        "common.h": "c",
         "types.h": "c",
         "stdint.h": "c",
         "stddef.h": "c",
         "memory.h": "c",
         "keyboard.h": "c",
-        "palloc.h": "c",
-        "inode.h": "c"
+        "pmm.h": "c",
+        "inode.h": "c",
+        "errno.h": "c",
+        "vfs.h": "c",
+        "utils.h": "c",
+        "panic.h": "c",
+        "cstdint": "c",
+        "compare": "c",
+        "format": "c",
+        "stdbool.h": "c",
+        "vmap.h": "c",
+        "assert.h": "c",
+        "string.h": "c",
+        "time.h": "c",
+        "boot.h": "c",
+        "ranges": "cpp",
+        "vasl.h": "c"
     },
     "mesonbuild.configureOnOpen": false
 }

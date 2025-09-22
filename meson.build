@@ -2,6 +2,7 @@ project('tiny-kernel', 'c', version: '1.0')
 
 c_flags = [
   '-ffreestanding', 
+  '-fno-omit-frame-pointer', 
   '-fno-stack-protector', 
   '-fno-stack-check', 
   '-mno-red-zone', 
@@ -12,7 +13,7 @@ c_flags = [
   '-Wall', 
   '-Wpedantic', 
   '-g', 
-  '-ggdb'
+  '-ggdb',
   '-O0',
 ]
 
@@ -25,3 +26,4 @@ arch_x86 = meson.source_root() / 'src/arch/x86'
 
 subdir('src')
 subdir('uefi-bootloader')
+

@@ -39,7 +39,7 @@ else
     ninja -C build/ 
 fi
 
-cp build/src/kernel.elf bin/kernel/
+cp build/src/vmtiny.elf bin/kernel/
 cp build/uefi-bootloader/bootx64.efi bin/boot/
 
 dd if=/dev/zero of=$OUTDIR/$OSNAME.img bs=512 count=93750
@@ -49,4 +49,4 @@ mmd -i $OUTDIR/$OSNAME.img ::/efi
 mmd -i $OUTDIR/$OSNAME.img ::/efi/boot
 mmd -i $OUTDIR/$OSNAME.img ::/bin 
 mcopy -i $OUTDIR/$OSNAME.img $OUTDIR/boot/bootx64.efi ::/efi/boot
-mcopy -i $OUTDIR/$OSNAME.img $OUTDIR/kernel/kernel.elf ::/bin/
+mcopy -i $OUTDIR/$OSNAME.img $OUTDIR/kernel/vmtiny.elf ::/bin/

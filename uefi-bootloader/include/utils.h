@@ -29,22 +29,20 @@ typedef struct memory_descriptor {
     uint64_t    npages;
     uint64_t    attribute;
     uint64_t    padding;
-} memory_descriptor_t;
+} struct efi_memory_descriptor;
 
-typedef struct memory_map {
-    memory_descriptor_t *map;
+typedef struct efi_memory_map {
+    struct efi_memory_descriptor *map;
     size_t size;
-} memory_map_t;
+} struct efi_memory_map;
 
 struct bootinfo {
     struct framebuffer framebuffer;
-    memory_map_t map;
+    struct efi_memory_map map;
     paddr_t kernel_image_start;
     paddr_t kernel_image_end;
-    paddr_t boot_variables_start;
-    paddr_t boot_variables_end;
-    paddr_t identity_paging_start;
-    paddr_t identity_paging_end;
+    paddr_t boot_vars_start;
+    paddr_t boot_vars_end;
 }; 
 
 #endif // BOOT_H

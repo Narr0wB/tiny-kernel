@@ -1,28 +1,26 @@
 
-#include <fs/vfs.h>
-#include <memory/pmm.h>
+#include <tiny/fs/vfs.h>
+#include <tiny/mm/palloc.h>
 
 // We are going to use a single mount namespace
 static struct mount root_mount;
 
-static struct inode_ops ramfs_inode_ops = {
-    // TODO
-};
+static struct inode_ops ramfs_inode_ops = {0};
 
 int init_vfs() {
     // Create a ramfs instance
-    struct superblock *root_sb = (struct superblock *)kpalloc();
-    struct superblock_ops *root_sb_ops = (struct superblock_ops *)kpalloc();
-    struct dentry *root_dentry = (struct dentry *)kpalloc();
+    // struct superblock *root_sb = (struct superblock *)kpalloc();
+    // struct superblock_ops *root_sb_ops = (struct superblock_ops *)kpalloc();
+    // struct dentry *root_dentry = (struct dentry *)kpalloc();
 
-    root_sb->ops = root_sb_ops;
-    root_sb->root = root_dentry;
-    root_sb->fs_private = NULL;
+    // root_sb->ops = root_sb_ops;
+    // root_sb->root = root_dentry;
+    // root_sb->fs_private = NULL;
     
-    root_mount.sb = root_sb;
-    root_mount.mp_dentry = NULL; // Since this is the root mount of the entire OS, it's mountpoint entry is NULL
-    root_mount.root = root_dentry;
-    root_mount.parent = NULL;
+    // root_mount.sb = root_sb;
+    // root_mount.mp_dentry = NULL; // Since this is the root mount of the entire OS, it's mountpoint entry is NULL
+    // root_mount.root = root_dentry;
+    // root_mount.parent = NULL;
 }
 
 // int mount_filesystem(struct mount *mnt) {

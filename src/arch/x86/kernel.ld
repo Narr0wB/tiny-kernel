@@ -2,12 +2,13 @@
 OUTPUT_FORMAT(elf64-x86-64)
 ENTRY(_start)
 
-VASL_VIRTUAL_BASE = 0xFFFFFFFF80000000;
-VASL_KERNEL_BASE = VASL_VIRTUAL_BASE + 0x10000000;
+VASL_VIRTUAL_BASE = 0xFFFFFF8000000000;
+VASL_KERNEL_BASE = VASL_VIRTUAL_BASE + 0x100000;
 
 SECTIONS {
     . = VASL_KERNEL_BASE;
     
+    __pkernel_start = . - VASL_VIRTUAL_BASE;
     .text ALIGN(0x1000) : AT(ADDR(.text) - VASL_VIRTUAL_BASE)
     {
         *(.text)
@@ -28,4 +29,5 @@ SECTIONS {
         *(COMMON)
         *(.bss)
     }
+    __pkernel_end = . - VASL_VIRTUAL_BASE;
 }

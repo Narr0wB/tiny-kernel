@@ -1,5 +1,5 @@
 
-boot_sources = files('boot.c', 'vmap.c')
+boot_sources = files('boot.c')
 
 gnu_efi_dir = meson.source_root() / 'gnu-efi'
 efi_ldscript = gnu_efi_dir / 'elf_x86_64_efi.lds' 

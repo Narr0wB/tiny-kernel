@@ -30,7 +30,7 @@ BOOTLOADER_CFLAGS = -fpic -ffreestanding -fno-stack-protector -fno-stack-check -
 KERNEL_LDFLAGS = -nostdlib
 
 BOOT = bootx64
-KERNEL = kernel
+KERNEL = vmtiny 
 OSNAME = tinyos
 
 setup: 
@@ -74,5 +74,5 @@ run:
 	qemu-system-x86_64 -m 2G -cpu qemu64 -d int -no-shutdown -no-reboot -bios OVMF.fd -drive file=$(OUTDIR)/$(OSNAME).img,if=ide
 
 debug: 
-	qemu-system-x86_64 -m 2G -cpu qemu64 -bios OVMF.fd -s -S -drive file=$(OUTDIR)/$(OSNAME).img,if=ide & disown
-	$(GDB) $(OUTDIR)/kernel/$(KERNEL).elf --eval-command="target remote :1234"
+	qemu-system-x86_64 -m 2G -cpu qemu64 -bios OVMF.fd -gdb tcp::1234,wait=on -S -drive file=$(OUTDIR)/$(OSNAME).img,if=ide & sleep 0.2
+	$(GDB) $(OUTDIR)/kernel/vmtiny.elf -x utils.gdb --eval-command="target remote :1234"

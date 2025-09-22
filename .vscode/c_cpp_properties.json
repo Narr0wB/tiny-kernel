@@ -4,10 +4,9 @@
             "name": "Mac",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/src/include/**",
-                "${workspaceFolder}/src/arch/x86/include/**",
-                "${workspaceFolder}/uefi-bootloader/include/**",
-                "${workspaceFolder}/src/include"
+                "${workspaceFolder}/src/include/",
+                "${workspaceFolder}/src/arch/x86/include/",
+                "${workspaceFolder}/uefi-bootloader/include/"
             ],
             "defines": [],
             "macFrameworkPath": [

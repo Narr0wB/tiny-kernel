@@ -7,7 +7,6 @@
     pushq %rcx ;\ 
     pushq %rdx ;\
     pushq %rbx ;\
-    pushq %rsp ;\
     pushq %rbp ;\
     pushq %rsi ;\
     pushq %rdi ;\
@@ -32,7 +31,6 @@
     popq %rdi ;\
     popq %rsi ;\
     popq %rbp ;\
-    popq %rsp ;\
     popq %rbx ;\
     popq %rdx ;\
     popq %rcx ;\

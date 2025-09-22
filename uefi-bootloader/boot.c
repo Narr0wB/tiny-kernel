@@ -5,9 +5,9 @@
 #include <elf.h>
 
 #include "efidef.h"
-#include <utils.h>
-#include <memory/vasl.h>
-#include <vmap.h>
+#include <tiny/boot/boot.h>
+#include <tiny/mm/vasl.h>
+#include <arch/mm/paging.h>
 
 // TODO: Map the kernel to the higher half of the virtual memory address spaces
 
@@ -86,16 +86,12 @@ EFI_STATUS EFIAPI efi_main(
 ) {
     InitializeLib(ImageHandle, SystemTable);
 
-    Print(L"Loading the memory map...\n");
-
-    
-
     Print(L"Loading kernel...\n");
 
     EFI_FILE *KernelELF;
     EFI_STATUS s = 0;
 
-    s = LoadFile(ImageHandle, SystemTable, NULL, L"\\bin\\kernel.elf", &KernelELF);
+    s = LoadFile(ImageHandle, SystemTable, NULL, L"\\bin\\vmtiny.elf", &KernelELF);
 
     if (s != EFI_SUCCESS) {
         return EFI_NOT_FOUND;
@@ -140,7 +136,6 @@ EFI_STATUS EFIAPI efi_main(
         Elf64_Phdr pHeader = ProgramHeaders[i];
         if (pHeader.p_type == PT_LOAD) {
             requested_pages += SIZE_TO_PAGES(pHeader.p_memsz);
-            // requested_pages += (pHeader.p_memsz + 0x1000 - 1) / 0x1000;
         }
     }
     
@@ -179,17 +174,15 @@ EFI_STATUS EFIAPI efi_main(
 
     // Calculate the address after the kernel where to put memory map and boot variables
     paddr_t kernel_end           = kernel_offset + (paddr_t) kernel_pages * PAGE_SIZE; 
-    paddr_t boot_variables_start = 0;
-    paddr_t boot_variables_end   = 0;
+    paddr_t boot_info_start      = 0;
+    paddr_t boot_info_end        = 0;
     paddr_t mmap_start           = 0;
     paddr_t mmap_end             = 0;
-    paddr_t page_table_start     = 0;
-    paddr_t page_table_end       = 0;
     
     // Allocate memory for all the variables that we need to pass to our kernel
-    boot_variables_start = kernel_end;
-    boot_variables_end = kernel_end + SIZE_TO_PAGES(sizeof(struct bootinfo)) * PAGE_SIZE;
-    struct bootinfo *BootInfo = (struct bootinfo *)(boot_variables_start); 
+    boot_info_start = kernel_end;
+    boot_info_end = kernel_end + SIZE_TO_PAGES(sizeof(struct bootinfo)) * PAGE_SIZE;
+    struct bootinfo *BootInfo = (struct bootinfo *)(boot_info_start); 
     uefi_call_wrapper(BS->AllocatePages, 4, AllocateAddress, EfiLoaderData, SIZE_TO_PAGES(sizeof(struct bootinfo)), &BootInfo);
 
     // Load the memory map
@@ -203,8 +196,8 @@ EFI_STATUS EFIAPI efi_main(
     status = uefi_call_wrapper(BS->GetMemoryMap, 5, &MemoryMapSize, NULL, &MemoryMapKey, &DescriptorSize, &DescriptorVersion);
     if (status != EFI_BUFFER_TOO_SMALL) { Print(L"Failed to get info about the memory map! status: %d\n", status); Halt(); }
 
-    mmap_start = boot_variables_end;
-    mmap_end   = boot_variables_end + SIZE_TO_PAGES(MemoryMapSize) * PAGE_SIZE;
+    mmap_start = boot_info_end;
+    mmap_end   = boot_info_end + SIZE_TO_PAGES(MemoryMapSize) * PAGE_SIZE;
     MemoryMap  = (EFI_MEMORY_DESCRIPTOR*)(mmap_start);
 
     status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAddress, EfiLoaderData, SIZE_TO_PAGES(MemoryMapSize), &MemoryMap);
@@ -214,61 +207,37 @@ EFI_STATUS EFIAPI efi_main(
     status = uefi_call_wrapper(BS->GetMemoryMap, 5, &MemoryMapSize, MemoryMap, &MemoryMapKey, &DescriptorSize, &DescriptorVersion);
     if (status != EFI_SUCCESS) { Print(L"Failed to load the memory map! status: %d\n", MemoryMapSize); Halt(); }
 
-
-    // Allocate memory for the PML4 table
-    page_table_start = mmap_end;
-    page_table_t *pml4 = (page_table_t *)(mmap_end);
-    uefi_call_wrapper(BS->AllocatePages, 4, AllocateAddress, EfiLoaderData, 1, &pml4); 
-
-    // Recursive mapping
-    pml4->entries[510] = (uintptr_t) pml4;
-
-    // Tell the allocations made by the mapping where fetch necessary pages
-    extern paddr_t last_allocated_addr;
-    extern uint32_t allocations;
-    last_allocated_addr = (uintptr_t)pml4 + PAGE_SIZE;
-
-    memory_map_t mmap = {.map = (memory_descriptor_t *)MemoryMap, .size = MemoryMapSize/DescriptorSize};
+    struct efi_memory_map mmap = {.map = (struct efi_memory_descriptor *)MemoryMap, .size = MemoryMapSize/DescriptorSize};
 
     struct framebuffer *framebuffer = &BootInfo->framebuffer;
     InitializeGraphics(framebuffer);
 
+    // Make sure that the last descirptor is the framebuffer descriptor
     mmap.map[mmap.size - 1].type       = EfiMemoryMappedIO;
     mmap.map[mmap.size - 1].phys_start = (paddr_t)framebuffer->base_addr;
     mmap.map[mmap.size - 1].npages     = SIZE_TO_PAGES(framebuffer->size);
-
-    // identity_map_mmap(pml4, &mmap);
-
-    page_table_end = last_allocated_addr - PAGE_SIZE;
 
     Print(L"Kernel successfully loaded!\n");
 
     BootInfo->map = mmap;
     BootInfo->kernel_image_start    = kernel_offset;
     BootInfo->kernel_image_end      = kernel_end;
-    BootInfo->boot_variables_start  = boot_variables_start;
-    BootInfo->boot_variables_end    = mmap_end;
-    BootInfo->identity_paging_start = page_table_start;
-    BootInfo->identity_paging_end   = page_table_end;
+    BootInfo->boot_vars_start       = boot_info_start;
+    BootInfo->boot_vars_end         = mmap_end;
 
     uefi_call_wrapper(BS->FreePool, 1, FileInfo);
     uefi_call_wrapper(BS->FreePool, 1, ProgramHeaders);
-
     uefi_call_wrapper(BS->ExitBootServices, ImageHandle, MemoryMapKey);
 
     Print(L"[BOOTINFO] kernel_start_addr: %x, kernel_end_addr: %x, size: %d pages\n", 
         kernel_offset, kernel_end, SIZE_TO_PAGES(kernel_end - kernel_offset));
     Print(L"[BOOTINFO] kvars_start_addr: %x, kvars_end_addr: %x, size: %d pages\n", 
-        boot_variables_start, boot_variables_end, SIZE_TO_PAGES(boot_variables_end - boot_variables_start));
+        boot_info_start, boot_info_end, SIZE_TO_PAGES(boot_info_end - boot_info_start));
     Print(L"[BOOTINFO] mmap_start_addr: %x, mmap_end_addr: %x, size: %d pages\n", 
         mmap_start, mmap_end, SIZE_TO_PAGES(mmap_end - mmap_start));
-    Print(L"[BOOTINFO] page_table_start_addr: %x, page_table_end_addr: %x, size: %d pages\n", 
-        page_table_start, page_table_end, SIZE_TO_PAGES(page_table_end - page_table_start));
     Print(L"[BOOTINFO] kernel_entry: %x\n", V2P(header.e_entry));
-    Print(L"[BOOTINFO] Allocations made during identity mapping: %d pages\n", allocations);
 
-    // Declare and call the kernel entry point;
-    // SWITCH_PAGE_TREE(pml4);
+    // Declare and call the kernel entry point
     int (*_kernel_entry)(struct bootinfo *) = ( (__attribute__((sysv_abi)) int(*)(struct bootinfo *)) (V2P(header.e_entry)) );
 
     int code = _kernel_entry(BootInfo);

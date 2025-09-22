@@ -1,3 +1,8 @@
 
-init_sources = files('init.S', 'pt_mappings.S')
-init = static_library('init', init_sources, include_directories: kernel_include)
+
+sources = files(
+    'init.S', 
+    'init.c', 
+)
+
+arch_x86_boot = static_library('arch_x86_boot', sources, include_directories: kernel_include)

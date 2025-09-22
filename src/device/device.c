@@ -1,5 +1,5 @@
 
-#include <device/device.h>
+#include <tiny/device/device.h>
 
 void init_device() {
     init_keyboard();

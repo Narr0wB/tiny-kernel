@@ -87,12 +87,12 @@ __attribute__((aligned(4096))) int _kentry(struct bootinfo *init_data) {
 
     kprintf(KERN_INFO, "Initializing memory...\n");
     kprintf(KERN_INFO, "Kernel loaded at (paddr) %p - (paddr) %p\n", init_data->kernel_image_start, init_data->kernel_image_end);
+
     clean_efi_memory_map(&init_data->map);
     print_efi_memory_map(&init_data->map);
 
     for (size_t i = 0; i < init_data->map.size; ++i) {
         struct efi_memory_descriptor *desc = &(init_data->map.map[i]);
-
         switch (desc->type) {
             case EFI_CONVENTIONAL_MEMORY: bootmem_insert_region(desc->phys_start, desc->phys_start + desc->npages * PAGE_SIZE, REGION_TYPE_RAM); break;
             case EFI_MEMORY_MAPPED_IO: bootmem_insert_region(desc->phys_start, desc->phys_start + desc->npages * PAGE_SIZE, REGION_TYPE_MMIO); break;

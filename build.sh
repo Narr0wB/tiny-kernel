@@ -1,7 +1,5 @@
 #!/bin/bash
 
-
-
 MESON_OPTIONALS=""
 MESON_CROSS_INI=""
 NINJA_SUPPRESS_WARNINGS=false
@@ -9,13 +7,12 @@ NINJA_SUPPRESS_WARNINGS=false
 OUTDIR="./bin"
 OSNAME="tinyos"
 
-
 for arg in "$@"; do
     case $arg in
-        --clean) MESON_OPTIONALS="--wipe" ;; 
+        --clean|-c) MESON_OPTIONALS="--wipe" ;; 
         --suppress-warnings|-s) NINJA_SUPPRESS_WARNINGS=true ;;
         --help|-h) 
-            echo "Usage: $0 [--clean] [--suppress-warnings|-s]"
+            echo "Usage: $0 [--clean|-c] [--suppress-warnings|-s]"
             exit 0
         ;;
         *) 

@@ -4,7 +4,7 @@ MESON_OPTIONALS=""
 MESON_CROSS_INI=""
 NINJA_SUPPRESS_WARNINGS=false
 
-OUTDIR="./bin"
+OUTDIR="bin/"
 OSNAME="tinyos"
 
 for arg in "$@"; do
@@ -36,9 +36,15 @@ else
     ninja -C build/ 
 fi
 
+# Prepare the environment for the creation of the image file
+mkdir -p bin/kernel
+mkdir -p bin/boot
+
 cp build/src/vmtiny.elf bin/kernel/
+cp build/uefi-bootloader/bootx64.elf bin/boot/
 cp build/uefi-bootloader/bootx64.efi bin/boot/
 
+# Create the final image file
 dd if=/dev/zero of=$OUTDIR/$OSNAME.img bs=512 count=93750
 
 mformat -i $OUTDIR/$OSNAME.img ::

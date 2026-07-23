@@ -2,14 +2,15 @@
 
 import sys
 import subprocess
+import argparse
 
-if len(sys.argv) < 3:
-    print("Too little arguments! Usage: ")
-    print(f"    {sys.argv[0]} [kernel_elf_path] [output_file_path]")
-    exit(0)
+parser = argparse.ArgumentParser()
+parser.add_argument("input", help="Kernel ELF path")
+parser.add_argument("output", help="Output ASM path")
+args = parser.parse_args(sys.argv[1:])
 
-kpath = sys.argv[1]
-sympath = sys.argv[2]
+kpath = args.input
+sympath = args.output
 
 syms = []
 

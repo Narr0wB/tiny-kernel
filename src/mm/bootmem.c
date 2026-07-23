@@ -1,5 +1,6 @@
 
 #include <arch/mm/paging.h>
+
 #include <tiny/mm/vasl.h>
 #include <tiny/mm/palloc.h>
 #include <tiny/io.h>
@@ -11,12 +12,17 @@
 #define MAX_REGIONS 128
 static struct bootmem_region __regions[MAX_REGIONS];
 
-extern char __pkernel_start[], __pkernel_end[];
-static paddr_t kernel_image_start = (paddr_t)__pkernel_start;
-static paddr_t kernel_image_end = (paddr_t)__pkernel_end;
+static paddr_t kernel_image_start = (paddr_t)0;
+static paddr_t kernel_image_end = (paddr_t)0;
 
 pn_t max_pfn = 0;
 size_t allocable_pages = 0;
+
+void bootmem_init(struct bootinfo *info)
+{
+    kernel_image_start = info->kernel_image_start;
+    kernel_image_end   = info->kernel_image_end;
+}
 
 int bootmem_insert_region(paddr_t start, paddr_t end, int type) 
 {
@@ -98,7 +104,7 @@ void *bootmem_alloc(size_t size, unsigned long align)
 
 void bootmem_get_memory_info(struct memory_info *info)
 {
-    info->max_pfn = max_pfn;
+    info->max_pfn            = max_pfn;
     info->kernel_image_start = kernel_image_start;
     info->kernel_image_end   = kernel_image_end;
     info->allocable_pages    = allocable_pages;

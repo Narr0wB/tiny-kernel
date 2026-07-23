@@ -1,13 +1,9 @@
 
-boot_sources = files('boot.c')
-
 gnu_efi_dir = meson.source_root() / 'gnu-efi'
 efi_ldscript = gnu_efi_dir / 'elf_x86_64_efi.lds' 
 efi_libs = ['-lgnuefi', '-lefi']
 
-cc = meson.get_compiler('c')
-ld = find_program('ld')
-objcopy = find_program('objcopy')
+boot_sources = files('boot.c')
 
 boot_cflags = [
   '-mno-red-zone',
@@ -17,15 +13,9 @@ boot_cflags = [
   '-fPIC',
   '-Wall',
   '-fshort-wchar',
+  '-g3'
 ]
 
-boot_ldflags = [
-  '-shared',
-  '-Bsymbolic',
-  '-L' + gnu_efi_dir,
-  '-T' + efi_ldscript,
-  '-nostdlib',
-] 
 
 tmp = static_library(
   'tmp',
@@ -37,12 +27,21 @@ tmp = static_library(
 
 boot_objs = tmp.extract_all_objects()
 
-boot_elf = custom_target('boot.so',
+boot_ldflags = [
+  '-shared',
+  '-Bsymbolic',
+  '-L' + gnu_efi_dir,
+  '-T' + efi_ldscript,
+  '-nostdlib',
+] 
+
+ld = find_program('ld')
+boot_elf = custom_target('bootx64.elf',
   input: [
     gnu_efi_dir / 'crt0-efi-x86_64.o',
     boot_objs
   ],
-  output: 'boot.so',
+  output: 'bootx64.elf',
   command: [
     ld, 
     boot_ldflags,
@@ -51,6 +50,8 @@ boot_elf = custom_target('boot.so',
   ]
 )
 
+
+objcopy = find_program('objcopy')
 boot_efi = custom_target('boot.efi',
   input: boot_elf,
   output: 'bootx64.efi',

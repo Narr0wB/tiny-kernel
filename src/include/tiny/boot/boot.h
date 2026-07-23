@@ -19,8 +19,8 @@ struct bootinfo {
     struct efi_memory_map map;
     paddr_t kernel_image_start;
     paddr_t kernel_image_end;
-    paddr_t boot_vars_start;
-    paddr_t boot_vars_end;
+    paddr_t kernel_stack_start;
+    paddr_t kernel_stack_end;
 };   
 
 #endif // BOOT_H

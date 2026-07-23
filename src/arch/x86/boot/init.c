@@ -91,6 +91,8 @@ __attribute__((aligned(4096))) int _kentry(struct bootinfo *init_data) {
     clean_efi_memory_map(&init_data->map);
     print_efi_memory_map(&init_data->map);
 
+    bootmem_init(init_data);
+
     for (size_t i = 0; i < init_data->map.size; ++i) {
         struct efi_memory_descriptor *desc = &(init_data->map.map[i]);
         switch (desc->type) {

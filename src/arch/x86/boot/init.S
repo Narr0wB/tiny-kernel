@@ -17,7 +17,9 @@ stack_top:
 initial_pgd:
     .fill 512, 8, 0
 
-# We are going to identity map the first 8M of phys memory and also map it at an offset (VASL_KERNEL_BASE) 
+# We are going to map the first 8M of phys memory to:
+#    1) Itself (identity)
+#    2) VASL_KERNEL_BASE
 .set pgdID,   initial_pgd
 .set pgdHIGH, initial_pgd + PGD_INDEX(VASL_KERNEL_BASE) * 8
 

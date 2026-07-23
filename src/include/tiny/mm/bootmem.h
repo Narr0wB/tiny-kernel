@@ -4,6 +4,7 @@
 
 #include <tiny/types.h>
 #include <tiny/mm/types.h>
+#include <tiny/boot/boot.h>
 
 #define REGION_TYPE_RAM  0
 #define REGION_TYPE_MMIO 1
@@ -14,6 +15,7 @@ struct bootmem_region {
     int type;
 } __packed;
 
+void bootmem_init(struct bootinfo *info);
 int bootmem_insert_region(paddr_t start, paddr_t end, int type);
 void *bootmem_alloc(size_t size, unsigned long align);
 void bootmem_get_memory_info(struct memory_info *info);

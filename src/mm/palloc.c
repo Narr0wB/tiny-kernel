@@ -18,12 +18,15 @@ struct buddy_allocator allocator = {
     .free_pages = 0
 };
 
-extern char __pkernel_start[];
-extern char __pkernel_end[];
+static paddr_t kernel_image_start = (paddr_t)0;
+static paddr_t kernel_image_end   = (paddr_t)0;
 
 void init_palloc(struct memory_info *info)
 {
     kprintf(KERN_INFO, "Initializing buddy allocator\n");
+
+    kernel_image_start = info->kernel_image_start;
+    kernel_image_end   = info->kernel_image_end;
 
     allocator.page_count = info->max_pfn;
     allocator.pages = bootmem_alloc(allocator.page_count * sizeof(struct page), PAGE_ALIGNMENT);
@@ -103,7 +106,7 @@ static void __allocator_free_block(pn_t page, int order)
 
 void __free_single_page(pn_t pg)
 {
-    if (pn_to_paddr(pg) > (paddr_t)__pkernel_start && pn_to_paddr(pg) < (paddr_t)__pkernel_end) {
+    if (pn_to_paddr(pg) > kernel_image_start && pn_to_paddr(pg) < kernel_image_end) {
         kprintf(KERN_ERROR, "Tried to mark a kernel page as free!\n");
         return;
     }

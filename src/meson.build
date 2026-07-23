@@ -7,7 +7,8 @@ subdir('kernel')
 subdir('mm')
 
 link_script = meson.source_root() / 'src' / 'arch' / 'x86' / 'kernel.ld'
-ksymtable_script = meson.source_root() /'scripts' / 'ksymtable.py' 
+ksymtable_script = meson.source_root() / 'scripts' / 'ksymtable.py' 
+
 link_args = [
   '-no-pie', 
   '-nostdlib', 

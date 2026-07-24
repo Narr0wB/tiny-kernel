@@ -2,7 +2,6 @@
 sources = files(
     'io.c',
     'serial.c',
-    'notifier.c',
     'panic.c',
     'string.c',
     'syscall.c',

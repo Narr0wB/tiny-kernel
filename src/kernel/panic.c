@@ -1,7 +1,8 @@
 
 #include <tiny/panic.h>
 
-void __panic(const char *msg, registers_t *regs) {
+void __panic(const char *msg, registers_t *regs) 
+{
     tty_clear(CLEAR_COLOR);
     tty_set_cursor((cursor_t){0, 0});
     

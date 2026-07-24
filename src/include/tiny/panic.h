@@ -8,6 +8,6 @@
 
 extern void panic(const char *msg);
 
-void __panic(const char *msg, registers_t *regs);
+void __panic(const char *msg);
 
 #endif // PANIC_H

@@ -1,6 +1,7 @@
 
 #include <arch/cpu.h>
 #include <arch/idt.h>
+
 #include <tiny/boot/boot.h>
 #include <tiny/video.h>
 #include <tiny/tty/tty.h>
@@ -11,6 +12,8 @@
 #include <tiny/mm/vasl.h>
 #include <tiny/mm/bootmem.h>
 #include <tiny/mm/kmalloc.h>
+#include <tiny/device/device.h>
+#include <tiny/panic.h>
 
 // This function will merge memory descriptors of type EfiBootServicesData/Code with EfiConventionalMemory descriptors
 void clean_efi_memory_map(struct efi_memory_map *mmap) {
@@ -107,8 +110,6 @@ __attribute__((aligned(4096))) int _kentry(struct bootinfo *init_data) {
     setup_kernel_paging(&info);
     init_palloc(&info);
 
-    bootmem_init_palloc();
-
     cpu_setup_main_core();
 
     // extern struct buddy_allocator allocator;
@@ -144,16 +145,18 @@ __attribute__((aligned(4096))) int _kentry(struct bootinfo *init_data) {
     // }
 
     init_video(&init_data->framebuffer);
+    init_tty();
+    init_device();
 
-    __asm__ volatile (
-        "int $0x40"
-    );
+    panic("eddu");
+
+    // __asm__ volatile (
+    //     "int $0x40"
+    // );
 
     kprintf(KERN_DEBUG, "I survived the interrupt, wow!!!\n");
 
     // kprintf(KERN_INFO, "Initializing the vga and tty module...");
-
-    // init_tty();
     
     // kprintf("Initializing IDT and setting up interrupt service routines...");
     // init_idt();

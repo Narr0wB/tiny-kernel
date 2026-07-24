@@ -41,7 +41,7 @@ if [ "$1" = "--debug" ] || [ "$1" = "-d" ]; then
 
         sleep 0.1
     done
-    
+
 
     $DBGR \
         $OUTDIR/kernel/vmtiny.elf $OUTDIR/boot/bootx64.elf \

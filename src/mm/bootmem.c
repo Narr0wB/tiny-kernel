@@ -108,17 +108,6 @@ void bootmem_get_memory_info(struct memory_info *info)
     info->kernel_image_start = kernel_image_start;
     info->kernel_image_end   = kernel_image_end;
     info->allocable_pages    = allocable_pages;
-}
-
-void bootmem_init_palloc() {
-    for (int i = 0; i < MAX_REGIONS; ++i) {
-        if (__regions[i].type != REGION_TYPE_RAM || __regions[i].start == 0)
-            continue;
-
-        for (pn_t pfn = paddr_to_pn(__regions[i].start); pfn < paddr_to_pn(__regions[i].end); ++pfn) {
-            struct page *p = page_from_pn(pfn);
-            clr_bit(p->flags, PG_INVALID_BIT);
-            __free_single_page(pfn);
-        }
-    }
+    info->regions            = __regions;
+    info->nregions           = MAX_REGIONS;
 }

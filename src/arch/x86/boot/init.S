@@ -7,10 +7,10 @@
 
 # Set up temporary kernel stack
 .align 4
-.global stack_top
 stack_bottom:
     .skip 8192
 stack_top:
+.global stack_top
 
 # Set up the initial page map level 4
 .align 0x1000

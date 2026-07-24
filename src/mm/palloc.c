@@ -1,5 +1,6 @@
 
 #include <arch/mm/paging.h>
+
 #include <tiny/mm/bootmem.h>
 #include <tiny/mm/vasl.h>
 #include <tiny/io.h>
@@ -52,6 +53,17 @@ void init_palloc(struct memory_info *info)
 
         list_head_init(&map->list);
         map->free_count = 0;
+    }
+
+    for (size_t i = 0; i < info->nregions; ++i) {
+        if (info->regions[i].type != REGION_TYPE_RAM || info->regions[i].start == 0)
+            continue;
+
+        for (pn_t pfn = paddr_to_pn(info->regions[i].start); pfn < paddr_to_pn(info->regions[i].end); ++pfn) {
+            struct page *p = page_from_pn(pfn);
+            clr_bit(p->flags, PG_INVALID_BIT);
+            __free_single_page(pfn);
+        }
     }
 }
 

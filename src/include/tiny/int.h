@@ -6,7 +6,6 @@
 #include <tiny/lib.h>
 #include <tiny/assert.h>
 #include <tiny/io.h>
-#include <tiny/device/ps2.h>
 #include <tiny/types.h>
 #include <tiny/notifier.h>
 

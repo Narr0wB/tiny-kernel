@@ -4,4 +4,4 @@ sources = files(
     'keyboard.c', 
 )
 
-# device = static_library('device', sources, include_directories: kernel_include)
+device = static_library('device', sources, include_directories: kernel_include)

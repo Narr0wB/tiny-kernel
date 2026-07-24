@@ -22,7 +22,8 @@ link_modules = [
   arch_x86_mm,
   fs,
   kernel,
-  mm
+  mm,
+  device
 ]
 
 # To generate a symtable, we need to:

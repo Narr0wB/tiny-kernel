@@ -7,21 +7,31 @@
 #include <tiny/list.h>
 #include <tiny/mm/types.h>
 
-/* Page flags */
-#define PG_INVALID_BIT 0
+/* 
+ * Page flags 
+ */
+#define PG_FREE    0
+#define PG_INVALID 1
+
+/* 
+ * Palloc flags 
+ */
+#define PALLOC_ZERO (1U << 0)
+
+
+#define BUDDY_ORDER_COUNT 9
+#define BUDDY_MAX_ORDER (BUDDY_ORDER_COUNT - 1)
 
 struct page {
     atomic_t count;
-    pn_t pnumber;
-
-    int order;
-    struct list_head list;
-
-    uint32_t flags;
-    vaddr_t virt;
+    int8_t order;
+    uint8_t flags;
+    pn_t pfn;
 };
 
-#define BUDDY_ORDERS 6
+struct free_block {
+    struct list_head list;
+};
 
 struct buddy_map {
     struct list_head list;
@@ -41,12 +51,11 @@ struct buddy_allocator {
 struct page *page_from_pn(pn_t pn);
 
 void init_palloc(struct memory_info *info);
-void __free_single_page(pn_t pg);
 
 struct page *palloc(int order, unsigned int flags);
-void pfree(struct page *p, int order);
+void pfree(struct page *p);
 
 void *vpalloc(int order, unsigned int flags);
-void vpfree(void *p, int order);
+void vpfree(void *p);
 
 #endif // PALLOC_H

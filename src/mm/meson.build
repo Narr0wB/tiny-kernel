@@ -1,6 +1,5 @@
 
 sources = files(
-    'memory.c', 
     'bootmem.c',
     'palloc.c',
     'kmalloc.c'

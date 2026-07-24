@@ -166,9 +166,10 @@ void init_idt() {
         IDT_SET_ENTRY(idt[i], (uint64_t)irq_hnd_table[i], GDT_ENTRY_KERNEL_CS_OFF, 0, IRQ_TYPE_INTERRUPT, DPL_KERNEL);
     }
 
-    for (int i = 0; i < 32; ++i) 
+    for (int i = 0; i < 32; ++i) {
         if (cpu_exceptions_handlers[i].callback)
             register_irq_handler(i, &cpu_exceptions_handlers[i]);
+    }
     
 
     idt_load(idt, sizeof(idt) - 1);

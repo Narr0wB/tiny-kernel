@@ -83,9 +83,11 @@ void *__bootmem_alloc(size_t size, unsigned long align)
         paddr_t _start = ALIGN_UP(__regions[i].start, align);
         paddr_t _end   = ALIGN_DOWN(__regions[i].end, align);
 
-        if (_start < _end && (_end - _start) > size) {
+        if (_start < _end && (_end - _start) > size)
+        {
             __regions[i].start = _start + size;
-            return (void *)P2V(_start);
+            bootmem_insert_region(_start, _start + size, REGION_TYPE_ALLOC);
+            return p_to_v(_start);
         }
     }
 

@@ -2,8 +2,11 @@
 #ifndef ARCH_X86_PAGING_H
 #define ARCH_X86_PAGING_H
 
+#define INIT_LARGE_PAGE_COUNT 8
+
 #define ALIGN_UP(x, a) ((typeof(x))(((unsigned long)(x) + (a) - 1) & ~(a - 1)))
 #define ALIGN_DOWN(x, a) ((typeof(x))(((unsigned long)(x)) & ~(a - 1)))
+#define ALIGNED(x, a) ((int)!(x & (a - 1)))
 
 #define PAGE_SHIFT 12
 #define PAGE_SIZE (1ULL << PAGE_SHIFT)
@@ -14,7 +17,6 @@
 #define PAGE_ALIGN_UP(addr)         ALIGN_UP(addr, PAGE_SIZE) 
 #define PAGE_ALIGN_DOWN(addr)       ALIGN_DOWN(addr, PAGE_SIZE) 
 #define PAGE_ALIGN(addr)            PAGE_ALIGN_UP(addr)
-#define IS_PAGE_ALIGNED(addr)       (! (addr & ~PAGE_MASK))
 #define PHYS_ADDR_MASK              0xFFFFFFFFFFFFF000
 
 #define PAGE_FLAG_PRESENT   1 << 0
@@ -45,8 +47,7 @@ typedef struct page_table pud_t; /* Page upper directory */
 typedef struct page_table pmd_t; /* Page middle directory */
 typedef struct page_table pd_t;  /* Page directory*/
 
-void setup_kernel_paging(struct memory_info *info);
-
+void init_paging(struct memory_info *info);
 
 #endif // __ASSEMBLER__
 

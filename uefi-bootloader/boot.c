@@ -9,8 +9,6 @@
 #include <tiny/mm/vasl.h>
 #include <arch/mm/paging.h>
 
-// TODO: Map the kernel to the higher half of the virtual memory address spaces
-
 EFI_STATUS EFIAPI Halt() {
     UINTN event_index;
     EFI_STATUS status = uefi_call_wrapper(BS->WaitForEvent, 3, 1, &ST->ConIn->WaitForKey, &event_index);
@@ -28,20 +26,20 @@ EFI_STATUS EFIAPI Halt() {
         }                                                                   \
     } while (0)
 
-int EFIAPI memcmp(
-    const void *buf1, 
-    const void *buf2, 
-    size_t count
-) {
-    if (!count) return 0;
+// int EFIAPI memcmp(
+//     const void *buf1, 
+//     const void *buf2, 
+//     size_t count
+// ) {
+//     if (!count) return 0;
 
-    while (--count && *(unsigned char*)buf1 == *(unsigned char*)buf2) {
-        buf1 = ((unsigned char*)buf1 + 1);
-        buf2 = ((unsigned char*)buf2 + 1);
-    }
+//     while (--count && *(unsigned char*)buf1 == *(unsigned char*)buf2) {
+//         buf1 = ((unsigned char*)buf1 + 1);
+//         buf2 = ((unsigned char*)buf2 + 1);
+//     }
 
-    return *(unsigned char*)buf1 - *(unsigned char*)buf2;
-}
+//     return *(unsigned char*)buf1 - *(unsigned char*)buf2;
+// }
 
 EFI_STATUS EFIAPI InitializeGraphics(
     OUT struct framebuffer *framebuffer
@@ -223,8 +221,8 @@ EFI_STATUS EFIAPI efi_main(
 
     EFI_ERR(uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, MemoryMapKey));
 
-    int (*_kernel_entry)(struct bootinfo *) = ( (__attribute__((sysv_abi)) int(*)(struct bootinfo *)) (V2P(header.e_entry)) );
-    int code = _kernel_entry(BootInfo);
+    int (*_kernel_entry)(struct bootinfo *) = ( (__attribute__((sysv_abi)) int(*)(struct bootinfo *)) (v_to_p(header.e_entry)) );
+    int code = _kernel_entry(p_to_v(BootInfo));
 
     __builtin_unreachable();
     

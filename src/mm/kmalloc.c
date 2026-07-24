@@ -54,7 +54,7 @@ void slab_free_frame(struct slab_allocator *alloc, struct slab_frame *frame)
 
     *ptr = frame->next;
     alloc->frame_count--;
-    vpfree((void *)frame, SLAB_FRAME_BLOCK_SIZE);
+    vpfree((void *)frame);
 }
 
 void *slab_alloc_obj(struct slab_allocator *alloc, struct slab_frame *frame)
@@ -150,9 +150,10 @@ void *kmalloc(size_t size, unsigned int flags)
     }
 
     struct slab_allocator *slab = NULL;
-    for (int i = 0; i < ARRAY_SIZE(slabs); ++i)
+    for (int i = 0; i < ARRAY_SIZE(slabs); ++i) {
         if (size <= slabs[i].obj_size)
             return slab_malloc(&slabs[i]);
+    }
     
     kprintf(KERN_ERROR, "kmalloc does not support allocations of more than 2048B, yet.\n");
     return NULL;

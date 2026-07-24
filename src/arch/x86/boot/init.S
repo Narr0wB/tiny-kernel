@@ -45,11 +45,8 @@ tmp_gdt_descriptor:
 
 .section .text
 
-.global start
 .global _start
 .extern _kentry
-
-start = V2P(_start)
 
 _start:
     # Load new stack
@@ -76,7 +73,7 @@ _start:
     # Insert in PDT the addresses of PT0, PT1, PT2, PT3
     movq $V2P(pmd), %rax
     movq $0, %rbx
-    movq $4, %rcx
+    movq $INIT_LARGE_PAGE_COUNT, %rcx
 
 .pd_insert_loop:
     movq %rbx, (%rax) 
@@ -96,7 +93,6 @@ higher_half:
     # Move rsp to virtual address
     movabsq $VASL_VIRTUAL_BASE, %rax
     addq %rax, %rsp
-    addq %rax, %rdi
     movq $0, %rbp
 
     call _kentry

@@ -222,7 +222,7 @@ EFI_STATUS EFIAPI efi_main(
     EFI_ERR(uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, MemoryMapKey));
 
     int (*_kernel_entry)(struct bootinfo *) = ( (__attribute__((sysv_abi)) int(*)(struct bootinfo *)) (v_to_p(header.e_entry)) );
-    int code = _kernel_entry(p_to_v(BootInfo));
+    int code = _kernel_entry((struct bootinfo*)p_to_v((paddr_t)BootInfo));
 
     __builtin_unreachable();
     

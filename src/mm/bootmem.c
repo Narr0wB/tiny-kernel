@@ -2,7 +2,6 @@
 #include <arch/mm/paging.h>
 
 #include <tiny/mm/vasl.h>
-#include <tiny/mm/palloc.h>
 #include <tiny/io.h>
 #include <tiny/panic.h>
 #include <tiny/errno.h>
@@ -87,7 +86,7 @@ void *__bootmem_alloc(size_t size, unsigned long align)
         {
             __regions[i].start = _start + size;
             bootmem_insert_region(_start, _start + size, REGION_TYPE_ALLOC);
-            return p_to_v(_start);
+            return (void*)p_to_v(_start);
         }
     }
 

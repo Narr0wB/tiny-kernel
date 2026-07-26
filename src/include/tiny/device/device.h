@@ -2,8 +2,9 @@
 #ifndef DEVICE_H
 #define DEVICE_H
 
-// #include <tiny/device/ps2.h>
-#include <tiny/device/keyboard.h>
+#include <tiny/types.h>
+
+typedef uint64_t dev_t;
 
 void init_device();
 

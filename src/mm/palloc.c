@@ -100,12 +100,12 @@ static void split_block(int order)
         return;
     }
 
-    if (allocator.maps[order].free_count == 0) {
-        split_block(order + 1);
-
-        if (allocator.maps[order].free_count == 0)
-            return;
+    while (allocator.maps[order].free_count == 0 && order <= BUDDY_MAX_ORDER) {
+        order++;
     }
+
+    if (order > BUDDY_MAX_ORDER && allocator.maps[order].free_count == 0)
+        panic("OOM");
 
     struct free_block *b = list_take_last(&allocator.maps[order].list, struct free_block, list);
     p = page_from_pn(paddr_to_pn(v_to_p((vaddr_t)b)));
@@ -156,7 +156,7 @@ struct page *palloc(int order, unsigned int flags)
     atomic_set(&p->count, 1);
 
     if (flags & PALLOC_ZERO)
-        memset(p_to_v(pn_to_paddr(p->pfn)), 0, PAGE_SIZE << order);
+        memset((void*)p_to_v(pn_to_paddr(p->pfn)), 0, PAGE_SIZE << order);
 
     return p;
 }
@@ -164,12 +164,21 @@ struct page *palloc(int order, unsigned int flags)
 void pfree(struct page *page)
 {
     if (!page
-        || page->order == -1
-        || get_bit(page->flags, PG_INVALID))
+        || page->order < 0
+        || page->order > BUDDY_MAX_ORDER
+        || get_bit(page->flags, PG_INVALID)
+        || get_bit(page->flags, PG_FREE))
         return;
 
-    if (atomic_xadd(&page->count, -1))
-        __allocator_free_block(page->pfn, page->order);
+    int order = page->order;
+    if (page->pfn & ((1ULL << order) - 1) != 0)
+        panic("Physical block alignment does not match its order");
+
+    if (atomic_get(&page->count) != 1)
+        panic("Trying to free a page that was not allocated");
+
+    atomic_set(&page->count, 0);
+    __allocator_free_block(page->pfn, page->order);
 }
 
 void *vpalloc(int order, unsigned int flags)
@@ -184,10 +193,17 @@ void *vpalloc(int order, unsigned int flags)
 
 void vpfree(void *p)
 {
-    if (!ALIGNED((vaddr_t)p, PAGE_ALIGNMENT))
+    if (!p
+        || !ALIGNED((vaddr_t)p, PAGE_ALIGNMENT)
+        || (vaddr_t)p < p_to_v(0) 
+        || (vaddr_t)p > p_to_v(pn_to_paddr(allocator.page_count)))
         return;
 
     struct page *page = page_from_pn(paddr_to_pn(v_to_p(p)));
+
+    if (!page)
+        panic("Trying to free an invalid page!");
+
     pfree(page);
 }
 
@@ -225,8 +241,8 @@ void init_palloc(struct memory_info *info)
         if (info->regions[i].type != REGION_TYPE_RAM)
             continue;
 
-        paddr_t start = info->regions[i].start;
-        paddr_t end   = info->regions[i].end;
+        paddr_t start = ALIGN_UP(info->regions[i].start, PAGE_SIZE);
+        paddr_t end   = ALIGN_DOWN(info->regions[i].end, PAGE_SIZE);
 
         if (start == 0)
             start = 0x1000;
@@ -236,26 +252,5 @@ void init_palloc(struct memory_info *info)
             clr_bit(p->flags, PG_INVALID);
             __free_single_page(pfn);
         }
-    }
-
-    for (size_t i = 0; i < BUDDY_ORDER_COUNT; ++i) {
-        kprintf(KERN_DEBUG, "order: %llu, free blocks: %llu"EOL, i, allocator.maps[i].free_count);
-    }
-
-    struct page *p[10];
-    for (size_t i = 0; i < 10; ++i) {
-        p[i] = palloc(0, 0);
-    }
-
-    for (size_t i = 0; i < BUDDY_ORDER_COUNT; ++i) {
-        kprintf(KERN_DEBUG, "order: %llu, free blocks: %llu"EOL, i, allocator.maps[i].free_count);
-    }
-
-    for (size_t i = 0; i < 10; ++i) {
-        pfree(p[i]);
-    }
-
-    for (size_t i = 0; i < BUDDY_ORDER_COUNT; ++i) {
-        kprintf(KERN_DEBUG, "order: %llu, free blocks: %llu"EOL, i, allocator.maps[i].free_count);
     }
 }

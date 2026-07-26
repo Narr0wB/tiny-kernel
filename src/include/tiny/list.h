@@ -15,6 +15,8 @@ struct list_head {
 };
 
 #define LIST_NODE_INIT(node) { &(node), &(node) }
+#define LIST_HEAD(name) \
+    struct list_head name = LIST_NODE_INIT(name)
 
 static __force_inline void list_head_init(struct list_head *head)
 {

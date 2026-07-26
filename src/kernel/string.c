@@ -11,7 +11,8 @@ int digit(char c) {
     return (c - '0');
 }
 
-int strcmp(const char *str1, const char *str2) {
+int strcmp(const char *str1, const char *str2) 
+{
     kassert(0);
     return 0;
 }

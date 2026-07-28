@@ -13,11 +13,13 @@ struct dentry;
 
 typedef enum {
     INO_VALID,
-    INO_BAD
+    INO_DIRECTORY,
+    INO_BAD,
 } iflags_t;
 
 typedef uint32_t ino_t;
 typedef uint32_t mode_t;
+typedef uint64_t time_t;
 
 struct inode {
     // Unique inode number
@@ -32,7 +34,6 @@ struct inode {
     time_t atime, mtime, ctime;
 
     iflags_t flags;
-
     uint32_t type;
 
     struct inode_ops *ops;
@@ -52,10 +53,5 @@ struct inode_ops {
 struct file_ops {
 
 };
-
-struct dentry {
-    const char name[MAX_NAME_SIZE];
-    ino_t ino;
-} __attribute__((packed));
 
 #endif // INODE_H

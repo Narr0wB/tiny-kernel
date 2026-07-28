@@ -11,6 +11,9 @@
 
 #define barrier() __asm__ volatile ("" ::: "memory")
 
+#define ilog2(n) \
+    ( sizeof(n) <= 4 ? 31 - __builtin_clz(n) : 63 - __builtin_clzll(n) )
+
 static __force_inline void *memcpy(void *dest, const void *src, size_t count) {
     if (!count || dest == src)
         return dest;
@@ -68,14 +71,14 @@ static __force_inline int memcmp(const void *buf1, const void *buf2, size_t coun
 static __force_inline void __write_once_size(volatile void *p, const void *v, int size)
 {
     switch (size) {
-    case 1: *(volatile uint8_t *)p  = *(const uint8_t *)v; break;
-    case 2: *(volatile uint16_t *)p = *(const uint16_t *)v; break;
-    case 4: *(volatile uint32_t *)p = *(const uint32_t *)v; break;
-    case 8: *(volatile uint64_t *)p = *(const uint64_t *)v; break;
-    default:
-        barrier();
-        memcpy((void *)p, v, size);
-        barrier();
+        case 1: *(volatile uint8_t *)p  = *(const uint8_t *)v;  break;
+        case 2: *(volatile uint16_t *)p = *(const uint16_t *)v; break;
+        case 4: *(volatile uint32_t *)p = *(const uint32_t *)v; break;
+        case 8: *(volatile uint64_t *)p = *(const uint64_t *)v; break;
+        default:
+            barrier();
+            memcpy((void *)p, v, size);
+            barrier();
     }
 }
 

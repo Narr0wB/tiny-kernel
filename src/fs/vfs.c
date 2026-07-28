@@ -2,12 +2,14 @@
 #include <tiny/mm/kmalloc.h>
 #include <tiny/string.h>
 #include <tiny/list.h>
+#include <tiny/errno.h>
 
 #include <tiny/fs/vfs.h>
 
 static LIST_HEAD(filesystems);
 static LIST_HEAD(superblocks);
-static struct mount *mounts; 
+static LIST_HEAD(d_root);
+static struct mount *mounts;
 
 void register_filesystem(struct filesystem *fs)
 {
@@ -23,18 +25,29 @@ void unregister_filesystem(const char *name)
     }
 }
 
-int init_vfs() {
-    // Create a ramfs instance
-    // struct superblock *root_sb = (struct superblock *)kpalloc();
-    // struct superblock_ops *root_sb_ops = (struct superblock_ops *)kpalloc();
-    // struct dentry *root_dentry = (struct dentry *)kpalloc();
+int graft_tree(struct mount *mnt, struct mount *parent, struct dentry *mountpoint)
+{
+    if (!d_is_dir(mountpoint))
+        return -ENODIR;
 
-    // root_sb->ops = root_sb_ops;
-    // root_sb->root = root_dentry;
-    // root_sb->fs_private = NULL;
+    mountpoint->flags |= DCACHE_MOUNTED;
+
+    mnt->mountpoint = mountpoint;
+    mnt->parent = parent;
+
+    list_add_tail(&mnt->child, &parent->sub_mnts);
+
+    return 0;
+}
+
+int cut_tree(struct dentry *mountpoint)
+{
+    if (!(mountpoint->flags & DCACHE_MOUNTED))
+        return -EINVAL;
     
-    // root_mount.sb = root_sb;
-    // root_mount.mp_dentry = NULL; // Since this is the root mount of the entire OS, it's mountpoint entry is NULL
-    // root_mount.root = root_dentry;
-    // root_mount.parent = NULL;
+    
+}
+
+int init_vfs() 
+{
 }

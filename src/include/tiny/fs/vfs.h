@@ -6,15 +6,17 @@
 
 #include <tiny/types.h>
 #include <tiny/assert.h>
+#include <tiny/hashtable.h>
 #include <tiny/errno.h>
 #include <tiny/fs/inode.h>
 #include <tiny/device/device.h>
 
-#define MAX_PATH_SIZE 4096
+DEFINE_HASHTABLE(mnthash, 5);
+
+#define DCACHE_MOUNTED (1U << 0)
 
 struct superblock;
 struct dentry;
-struct path;
 struct mount;
 
 struct filesystem {
@@ -49,6 +51,8 @@ struct dentry {
     struct list_head child;
     struct list_head subdirs;
 
+    uint32_t flags;
+
     atomic_t ref;
 };
 
@@ -60,7 +64,17 @@ struct mount {
     struct list_head sub_mnts;
 };
 
+static __force_inline int d_is_dir(struct dentry *ent) 
+{
+    return ent->inode->flags == INO_DIRECTORY;
+}
+
 void register_filesystem(struct filesystem *fs);
 void unregister_filesystem(const char *name);
+
+
+
+int graft_tree(struct mount *mnt, struct mount *parent, struct dentry *mountpoint);
+int cut_tree(struct dentry *mountpoint);
 
 #endif // VFS_H

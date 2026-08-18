@@ -58,13 +58,18 @@ static __force_inline int32_t atomic_xadd(atomic_t *a, int32_t addend) {
     return addend;
 }
 
-static __force_inline int32_t atomic_xsub(atomic_t *a, int32_t addend) {
+static __force_inline bool atomic_dec_and_test(atomic_t *a)
+{
+    bool zero;
+
     __asm__ volatile (
-        LOCK_PREFIX "xsubl %1, %0"
-        : "+m" (a->counter), "+r" (addend)
+        LOCK_PREFIX "decl %0\n\t"
+        : "+m" (a->counter), "=@ccz" (zero)
+        :
+        : "memory"
     );
 
-    return addend;
+    return zero;
 }
 
 #endif // ARCH_X86_ATOMIC_H

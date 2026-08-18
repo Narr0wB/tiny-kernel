@@ -32,7 +32,7 @@ static __force_inline uint32_t hash(uint64_t key, uint8_t bits)
     return (key * HASH_MAGIC) / (1ULL << bits);
 }
 
-static __force_inline void hlist_add_head(struct hlist_head *bucket, struct hlist_node *node)
+static __force_inline void hlist_add_head(struct hlist_node *node, struct hlist_head *bucket)
 {
     node->next = bucket->first;
     node->pprev = &bucket->first;
@@ -50,12 +50,15 @@ static __force_inline void hlist_del(struct hlist_node *node)
     next->pprev = &prev->next;
 }
 
+#define hash_add(table, node, key) \
+    hlist_add_head(node, &table[hash(key, HASH_BITS(table))])
+
 #define hlist_entry_safe(ptr, type, member) \
-    ({ typeof(ptr) __ptr = ptr; (ptr) ? container_of(ptr, type, member) : NULL })
+    ({ typeof(ptr) __ptr = ptr; (ptr) ? container_of(ptr, type, member) : NULL; })
 
 #define hlist_for_each_entry(pos, head, member) \
-    for (pos = hlist_entry_safe((head)->first, typeof(*pos), member); \
-         pos; \
+    for (pos = hlist_entry_safe((head)->first, typeof(*pos), member);           \
+         pos;                                                                   \
          pos = hlist_entry_safe((pos)->member.next, typeof(*(pos)), member))
 
 #define hlist_for_each_possible(name, obj, member, key) \

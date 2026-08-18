@@ -11,10 +11,6 @@
 #include <tiny/fs/inode.h>
 #include <tiny/device/device.h>
 
-DEFINE_HASHTABLE(mnthash, 5);
-
-#define DCACHE_MOUNTED (1U << 0)
-
 struct superblock;
 struct dentry;
 struct mount;
@@ -22,26 +18,35 @@ struct mount;
 struct filesystem {
     const char *name;
     uint8_t flags;
-    int (*init_fs)(struct superblock *);
-    void (*kill_fs)(struct superblock *);
     struct list_head list;
+
+    int (*fill_super)(struct superblock *);
+    void (*kill_super)(struct superblock *);
 };
 
 struct superblock_ops {
-    int (*statfs) (struct superblock *, void *buf);
+    int (*statfs) (struct superblock *, void *);
     void (*put_super) (struct superblock *);
+    int (*alloc_inode) (struct superblock *);
+    int (*destroy_inode) (struct superblock *, struct inode *);
 };
 
 struct superblock {
+    struct superblock_ops *ops;
+
     struct list_head list;
-    dev_t device;
+    struct list_head inodes;
 
     struct filesystem *fs;
-    struct superblock_ops *ops;
-    struct dentry *root;
+    dev_t device;
+    uint32_t flags;
 
-    struct list_head inodes;
+    struct dentry *root;
+    atomic_t count;
 };
+
+/* Superblock flags */
+#define SB_ACTIVE (1U << 0)
 
 struct dentry {
     struct inode *inode;
@@ -56,12 +61,16 @@ struct dentry {
     atomic_t ref;
 };
 
+/* Dentry flags */
+#define DCACHE_MOUNTED (1U << 0)
+
 struct mount {
     struct mount *parent;
     struct superblock *sb;
     struct dentry *mountpoint;
     struct list_head child;
     struct list_head sub_mnts;
+    struct hlist_node hnode;
 };
 
 static __force_inline int d_is_dir(struct dentry *ent) 

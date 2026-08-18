@@ -3,6 +3,7 @@
 #define INODE_H
 
 #include <tiny/types.h>
+#include <tiny/list.h>
 
 #define MAX_NAME_SIZE 256
 
@@ -38,6 +39,8 @@ struct inode {
 
     struct inode_ops *ops;
     struct file_ops *fops;
+
+    struct list_head sb_list;
 };
 
 struct inode_ops {
@@ -48,10 +51,6 @@ struct inode_ops {
 
     // int (*link) (struct inode *dir, const char *name, struct inode **result);
     // int (*unlink) (struct inode *dir, const char *name, struct inode **result);
-};
-
-struct file_ops {
-
 };
 
 #endif // INODE_H

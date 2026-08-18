@@ -6,10 +6,11 @@
 
 #include <tiny/fs/vfs.h>
 
+static DEFINE_HASHTABLE(mnthash, 5);
+
 static LIST_HEAD(filesystems);
 static LIST_HEAD(superblocks);
 static LIST_HEAD(d_root);
-static struct mount *mounts;
 
 void register_filesystem(struct filesystem *fs)
 {
@@ -25,6 +26,68 @@ void unregister_filesystem(const char *name)
     }
 }
 
+void dput(struct dentry *entry)
+{
+
+}
+
+inline struct superblock *alloc_super(struct filesystem *fs, dev_t dev)
+{
+    struct superblock *s = kmalloc(sizeof(struct superblock), PAL_KERNEL);
+    if (!s)
+        return NULL;
+
+    s->ops = NULL;
+    list_head_init(&s->list);
+    list_head_init(&s->inodes);
+    s->fs = fs;
+    s->device = dev;
+    s->flags = 0;
+    s->root = NULL;
+    atomic_set(&s->count, 1);
+
+    return s;
+}
+
+struct superblock *sget(struct filesystem *fs, dev_t dev)
+{
+    struct superblock *sb = NULL;
+    list_foreach_entry(&superblocks, sb, list) {
+        if (dev != 0 && sb->device == dev && sb->fs == fs) {
+            atomic_inc(&sb->count);
+            return sb;
+        }
+    }
+
+    sb = alloc_super(fs, dev);
+    if (!sb)
+        return NULL;
+
+    if (fs->fill_super(sb) != 0) {
+        kfree(sb);
+        return NULL;
+    }
+
+    list_add(&sb->list, &superblocks);
+    return sb; 
+}
+
+int deactivate_super(struct superblock *sb)
+{
+    if (atomic_xadd(&sb->count, -1) > 0)
+        return 0;
+
+    if (sb->fs && sb->fs->kill_super)
+        sb->fs->kill_super(sb);
+
+    if (sb->root)
+        dput(sb->root);
+
+    list_del(&sb->list);
+    kfree(sb);
+    return 0;
+}
+
 int graft_tree(struct mount *mnt, struct mount *parent, struct dentry *mountpoint)
 {
     if (!d_is_dir(mountpoint))
@@ -36,6 +99,7 @@ int graft_tree(struct mount *mnt, struct mount *parent, struct dentry *mountpoin
     mnt->parent = parent;
 
     list_add_tail(&mnt->child, &parent->sub_mnts);
+    hash_add(mnthash, &mnt->hnode, (uint64_t)mountpoint);
 
     return 0;
 }
@@ -45,7 +109,26 @@ int cut_tree(struct dentry *mountpoint)
     if (!(mountpoint->flags & DCACHE_MOUNTED))
         return -EINVAL;
     
-    
+    struct mount *mnt = NULL;
+    hlist_for_each_possible(mnthash, mnt, hnode, (uint64_t)mountpoint) {
+        if (mnt->mountpoint == mountpoint) 
+            break;
+    }
+
+    if (!mnt)
+        return -ENOENT;
+
+    if (!list_empty(&mnt->sub_mnts))
+        return -EBUSY;
+
+    list_del(&mnt->child);
+    hlist_del(&mnt->hnode);
+
+    mountpoint->flags &= ~DCACHE_MOUNTED;
+
+    kfree(mnt);
+
+    return 0;
 }
 
 int init_vfs() 

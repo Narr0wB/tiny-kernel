@@ -68,6 +68,7 @@ struct mount {
     struct mount *parent;
     struct superblock *sb;
     struct dentry *mountpoint;
+    struct dentry *root;
     struct list_head child;
     struct list_head sub_mnts;
     struct hlist_node hnode;
@@ -82,8 +83,7 @@ void register_filesystem(struct filesystem *fs);
 void unregister_filesystem(const char *name);
 
 
-
-int graft_tree(struct mount *mnt, struct mount *parent, struct dentry *mountpoint);
-int cut_tree(struct dentry *mountpoint);
+struct mount *mount_bdev(struct filesystem *fs, dev_t dev, struct mount *parent, struct dentry *mountpoint);
+void umount_bdev(struct dentry *mountpoint);
 
 #endif // VFS_H

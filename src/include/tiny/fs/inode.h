@@ -5,12 +5,9 @@
 #include <tiny/types.h>
 #include <tiny/list.h>
 
-#define MAX_NAME_SIZE 256
-
 struct inode;
 struct inode_ops;
 struct file_ops;
-struct dentry;
 
 typedef enum {
     INO_VALID,
@@ -23,7 +20,6 @@ typedef uint32_t mode_t;
 typedef uint64_t time_t;
 
 struct inode {
-    // Unique inode number
     ino_t ino;
 
     size_t size;
@@ -48,7 +44,6 @@ struct inode_ops {
     int (*create) (struct inode *dir, const char *name, mode_t mode, struct inode **result);
     int (*mkdir) (struct inode *, const char *name, mode_t mode, struct inode **result);
     int (*rmdir) (struct inode *dir, struct inode *entity, const char *name);
-
     // int (*link) (struct inode *dir, const char *name, struct inode **result);
     // int (*unlink) (struct inode *dir, const char *name, struct inode **result);
 };

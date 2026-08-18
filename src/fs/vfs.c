@@ -74,7 +74,7 @@ struct superblock *sget(struct filesystem *fs, dev_t dev)
 
 int deactivate_super(struct superblock *sb)
 {
-    if (atomic_xadd(&sb->count, -1) > 0)
+    if (atomic_dec_and_test(&sb->count) > 0)
         return 0;
 
     if (sb->fs && sb->fs->kill_super)
@@ -131,6 +131,21 @@ int cut_tree(struct dentry *mountpoint)
     return 0;
 }
 
-int init_vfs() 
+struct mount *mount_bdev(struct filesystem *fs, dev_t dev, struct mount *parent, struct dentry *mountpoint)
 {
+    struct superblock *sb = sget(fs, dev);
+
+    if (!sb)
+        return NULL;
+
+    struct mount *mnt = kmalloc(sizeof(struct mount), PAL_KERNEL);
+
+    list_head_init(&mnt->child);
+    list_head_init(&mnt->sub_mnts);
+
+    mnt->root = sb->root;
+    mnt->sb   = sb;
+
+    graft_tree(mnt, parent, mountpoint);
+    return mnt;
 }

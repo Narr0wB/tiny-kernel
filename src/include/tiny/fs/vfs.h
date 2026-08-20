@@ -57,7 +57,6 @@ struct dentry {
     struct list_head subdirs;
 
     uint32_t flags;
-
     atomic_t ref;
 };
 
@@ -82,8 +81,7 @@ static __force_inline int d_is_dir(struct dentry *ent)
 void register_filesystem(struct filesystem *fs);
 void unregister_filesystem(const char *name);
 
-
 struct mount *mount_bdev(struct filesystem *fs, dev_t dev, struct mount *parent, struct dentry *mountpoint);
-void umount_bdev(struct dentry *mountpoint);
+int umount_bdev(struct dentry *mountpoint);
 
 #endif // VFS_H

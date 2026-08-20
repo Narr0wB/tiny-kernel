@@ -28,7 +28,18 @@ void unregister_filesystem(const char *name)
 
 void dput(struct dentry *entry)
 {
+    if (list_empty(&entry->subdirs))
+        return;
 
+    struct dentry *pos = NULL;
+    struct dentry *before = NULL;
+    list_foreach_entry(&entry->subdirs, pos, child) {
+        before = pos;
+
+        if (&pos->child != entry->subdirs.next) {
+            kfree(before);
+        }
+    }
 }
 
 inline struct superblock *alloc_super(struct filesystem *fs, dev_t dev)
@@ -51,6 +62,7 @@ inline struct superblock *alloc_super(struct filesystem *fs, dev_t dev)
 
 struct superblock *sget(struct filesystem *fs, dev_t dev)
 {
+    /* If the device already has a superblock, then yield */
     struct superblock *sb = NULL;
     list_foreach_entry(&superblocks, sb, list) {
         if (dev != 0 && sb->device == dev && sb->fs == fs) {
@@ -104,7 +116,28 @@ int graft_tree(struct mount *mnt, struct mount *parent, struct dentry *mountpoin
     return 0;
 }
 
-int cut_tree(struct dentry *mountpoint)
+struct mount *mount_bdev(struct filesystem *fs, dev_t dev, struct mount *parent, struct dentry *mountpoint)
+{
+    struct superblock *sb = sget(fs, dev);
+    if (!sb)
+        return NULL;
+
+    struct mount *mnt = kmalloc(sizeof(struct mount), PAL_KERNEL);
+
+    list_head_init(&mnt->sub_mnts);
+    mnt->root = sb->root;
+    mnt->sb   = sb;
+
+    if (graft_tree(mnt, parent, mountpoint)) {
+        kfree(mnt);
+        deactivate_super(sb);
+        return NULL;
+    }
+    
+    return mnt;
+}
+
+int umount(struct dentry *mountpoint)
 {
     if (!(mountpoint->flags & DCACHE_MOUNTED))
         return -EINVAL;
@@ -126,26 +159,8 @@ int cut_tree(struct dentry *mountpoint)
 
     mountpoint->flags &= ~DCACHE_MOUNTED;
 
+    deactivate_super(mnt->sb);
     kfree(mnt);
 
     return 0;
-}
-
-struct mount *mount_bdev(struct filesystem *fs, dev_t dev, struct mount *parent, struct dentry *mountpoint)
-{
-    struct superblock *sb = sget(fs, dev);
-
-    if (!sb)
-        return NULL;
-
-    struct mount *mnt = kmalloc(sizeof(struct mount), PAL_KERNEL);
-
-    list_head_init(&mnt->child);
-    list_head_init(&mnt->sub_mnts);
-
-    mnt->root = sb->root;
-    mnt->sb   = sb;
-
-    graft_tree(mnt, parent, mountpoint);
-    return mnt;
 }

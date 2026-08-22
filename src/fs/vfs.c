@@ -7,10 +7,33 @@
 #include <tiny/fs/vfs.h>
 
 static DEFINE_HASHTABLE(mnthash, 5);
+static DEFINE_HASHTABLE(inohash, 12);
 
 static LIST_HEAD(filesystems);
 static LIST_HEAD(superblocks);
-static LIST_HEAD(d_root);
+static struct dentry d_root;
+static struct inode  i_root;
+static struct mount  mnt_root;
+
+void init_vfs()
+{
+    mnt_root.mountpoint = &d_root;
+    mnt_root.root = &d_root;
+    mnt_root.parent = NULL;
+    mnt_root.sb = NULL;
+
+    list_head_init(&mnt_root.child);
+    list_head_init(&mnt_root.sub_mnts);
+
+    d_root.inode = &i_root;
+    d_root.name = QSTR("/");
+    d_root.parent = NULL;
+    d_root.flags = 0;
+    atomic_set(&d_root.ref, 0);
+
+    list_head_init(&d_root.child);
+    list_head_init(&d_root.subdirs);
+}
 
 void register_filesystem(struct filesystem *fs)
 {
@@ -34,12 +57,15 @@ void dput(struct dentry *entry)
     struct dentry *pos = NULL;
     struct dentry *before = NULL;
     list_foreach_entry(&entry->subdirs, pos, child) {
-        before = pos;
-
-        if (&pos->child != entry->subdirs.next) {
+        if (before)
             kfree(before);
-        }
+
+        dput(pos);
+        before = pos;
     }
+
+    if (before)
+        kfree(before);
 }
 
 inline struct superblock *alloc_super(struct filesystem *fs, dev_t dev)
@@ -92,8 +118,10 @@ int deactivate_super(struct superblock *sb)
     if (sb->fs && sb->fs->kill_super)
         sb->fs->kill_super(sb);
 
-    if (sb->root)
+    if (sb->root) {
         dput(sb->root);
+        kfree(sb->root);
+    }
 
     list_del(&sb->list);
     kfree(sb);
@@ -139,7 +167,7 @@ struct mount *mount_bdev(struct filesystem *fs, dev_t dev, struct mount *parent,
 
 int umount(struct dentry *mountpoint)
 {
-    if (!(mountpoint->flags & DCACHE_MOUNTED))
+    if (!(mountpoint->flags & DCACHE_MOUNTED) || mountpoint == &d_root)
         return -EINVAL;
     
     struct mount *mnt = NULL;
@@ -162,5 +190,58 @@ int umount(struct dentry *mountpoint)
     deactivate_super(mnt->sb);
     kfree(mnt);
 
+    return 0;
+}
+
+struct inode *alloc_inode(struct superblock *sb)
+{
+
+}
+
+static __force_inline u64 hash_inode(struct superblock *sb, ino_t ino)
+{
+    return (uintptr_t)sb ^ ino;
+}
+
+struct inode *iget(struct superblock *sb, ino_t ino)
+{
+    struct inode *inode = NULL;
+    list_foreach_entry(&sb->inodes, inode, sb_list) {
+        if (inode->ino == ino) {
+            atomic_inc(&inode->ref);
+            return inode;
+        }
+    }
+
+    inode = alloc_inode(sb);
+    inode->ino = ino;
+
+    if (sb->ops->read_inode(inode)) {
+        kfree(inode);
+        return NULL;
+    }
+
+    hash_add(inohash, &inode->hnode, hash_inode(sb, ino));
+    list_add(&inode->sb_list, &sb->inodes);
+    return inode;
+}
+
+int iput(struct inode *inode)
+{
+    if (!inode)
+        return -ENOENT;
+
+    if (!atomic_dec_and_test(&inode->ref))
+        return -EBUSY;
+    
+    if (inode->links == 0) {
+        if (inode->ops && inode->ops->truncate)
+            inode->ops->truncate(inode);
+    }
+
+    list_del(&inode->sb_list);
+    hlist_del(&inode->hnode);
+
+    kfree(inode);
     return 0;
 }

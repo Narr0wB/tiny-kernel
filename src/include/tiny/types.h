@@ -26,9 +26,7 @@ typedef struct {
     uint64_t rax;
 } __attribute__((packed)) registers_t;
 
-struct qstr {
-    char *str;
-    size_t len;
-};
+typedef uint64_t u64;
+typedef uint32_t u32;
 
 #endif // TYPES_H

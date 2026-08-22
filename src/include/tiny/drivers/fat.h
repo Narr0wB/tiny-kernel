@@ -4,6 +4,6 @@
 
 #include <tiny/fs/vfs.h>
 
-void init_fat_filesystem();
+void init_fat_fs();
 
 #endif // FAT_H

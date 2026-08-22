@@ -18,12 +18,6 @@ struct inode;
 struct inode_ops;
 struct file;
 
-typedef enum {
-    INO_VALID,
-    INO_DIRECTORY,
-    INO_BAD,
-} iflags_t;
-
 typedef uint32_t ino_t;
 typedef uint32_t mode_t;
 typedef uint64_t time_t;
@@ -66,29 +60,50 @@ struct superblock {
 
 
 struct dentry {
-    struct inode    *inode;
-    struct qstr      name;
+    struct inode     *inode;
+    struct qstr       name;
 
-    struct dentry   *parent;
-    struct list_head child;
-    struct list_head subdirs;
+    struct dentry    *parent;
+    struct hlist_node hnode;
+    struct list_head  child;
+    struct list_head  subdirs;
 
-    uint32_t         flags;
-    atomic_t         ref;
+    u32               flags;
+    atomic_t          ref;
 };
 
 /* Dentry flags */
 #define DCACHE_MOUNTED (1U << 0)
 
+struct dentry *d_alloc(struct dentry *parent, struct qstr *name);
+void           d_instantiate(struct dentry *dentry, struct inode *inode);
+struct dentry *d_lookup(struct dentry *parent, struct qstr *name);
+void           d_delete(struct dentry *entry);
+struct dentry *dget(struct dentry *dentry);
+void           dput(struct dentry *dentry);
+
 struct inode_ops {
-    struct dentry *(*lookup)(struct inode *dir, struct dentry *dentry, int flags);
-    // int (*lookup) (struct inode *dir, const char *name, struct inode **result);
-    // int (*create) (struct inode *dir, const char *name, mode_t mode, struct inode **result);
-    // int (*mkdir) (struct inode *, const char *name, mode_t mode, struct inode **result);
-    // int (*rmdir) (struct inode *dir, struct inode *entity, const char *name);
-    // int (*truncate) (struct inode *);
-    // int (*link) (struct inode *dir, const char *name, struct inode **result);
-    // int (*unlink) (struct inode *dir, const char *name, struct inode **result);
+    /* Resolve dentry->name in dir. Hit: bind dentry->inode, return 0.
+     * Miss: leave dentry negative (inode == NULL), return 0. */
+    int (*lookup)(struct inode *, struct dentry *, u32);
+
+    /* Create regular file dentry->name in dir; bind dentry to new inode. */
+    int (*create)(struct inode *, struct dentry *, mode_t);
+
+    /* Create subdirectory dentry->name in dir; bind dentry to new inode. */
+    int (*mkdir)(struct inode *, struct dentry *, mode_t);
+
+    /* Remove empty directory dentry from parent dir. */
+    int (*rmdir)(struct inode *, struct dentry *);
+
+    /* Remove non-dir dentry from dir; drop a link. */
+    int (*unlink)(struct inode *, struct dentry *);
+
+    /* (old_dir, old_dentry, new_dir, new_dentry, flags) */
+    int (*rename)(struct inode *, struct dentry *, struct inode *, struct dentry *, u32);
+
+    /* Free data blocks when links hit 0 (called from iput). */
+    int (*truncate)(struct inode *);
 };
 
 struct inode {
@@ -96,10 +111,10 @@ struct inode {
     struct superblock *sb;
     mode_t             mode;
     size_t             size;
-    uint32_t           links;
+    u32                links;
 
     time_t             atime, mtime, ctime;
-    uint32_t           type;
+    u32                type;
 
     atomic_t           ref;
 
@@ -111,6 +126,23 @@ struct inode {
 
     void              *private;
 };
+
+#define S_IFMT   0170000   /* type mask */
+#define S_IFSOCK 0140000
+#define S_IFLNK  0120000
+#define S_IFREG  0100000   /* regular file */
+#define S_IFBLK  0060000   /* block device */
+#define S_IFDIR  0040000   /* directory */
+#define S_IFCHR  0020000   /* char device */
+#define S_IFIFO  0010000   /* fifo */
+
+#define S_ISUID  04000     /* set-uid */
+#define S_ISGID  02000     /* set-gid */
+#define S_ISVTX  01000     /* sticky  */
+
+#define S_ISDIR(m)  (((m) & S_IFMT) == S_IFDIR)
+#define S_ISREG(m)  (((m) & S_IFMT) == S_IFREG)
+#define S_ISLNK(m)  (((m) & S_IFMT) == S_IFLNK)
 
 struct mount {
     struct mount      *parent;
@@ -124,7 +156,25 @@ struct mount {
 
 static __force_inline int d_is_dir(struct dentry *ent) 
 {
-    return ent->inode->mode == INO_DIRECTORY;
+    return S_ISDIR(ent->inode->mode);
+}
+
+static __force_inline struct inode *alloc_inode(struct superblock *sb)
+{
+    return sb->ops->alloc_inode(sb);
+}
+
+static __force_inline struct inode *new_inode(struct superblock *sb)
+{
+    struct inode *inode = alloc_inode(sb);
+    if (!inode)
+        return NULL;
+
+    memset(inode, 0, sizeof(struct inode));
+    inode->sb = sb;
+    list_add(&inode->sb_list, &sb->inodes);
+
+    return inode;
 }
 
 void register_filesystem(struct filesystem *fs);

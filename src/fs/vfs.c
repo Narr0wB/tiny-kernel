@@ -8,18 +8,20 @@
 
 static DEFINE_HASHTABLE(mnthash, 5);
 static DEFINE_HASHTABLE(inohash, 12);
+static DEFINE_HASHTABLE(dcache,  12);
 
 static LIST_HEAD(filesystems);
 static LIST_HEAD(superblocks);
-static struct dentry d_root;
-static struct inode  i_root;
-static struct mount  mnt_root;
+
+struct dentry d_root;
+struct inode  i_root;
+struct mount  mnt_root;
 
 void init_vfs()
 {
     mnt_root.mountpoint = &d_root;
     mnt_root.root = &d_root;
-    mnt_root.parent = NULL;
+    mnt_root.parent = &mnt_root;
     mnt_root.sb = NULL;
 
     list_head_init(&mnt_root.child);
@@ -27,7 +29,7 @@ void init_vfs()
 
     d_root.inode = &i_root;
     d_root.name = QSTR("/");
-    d_root.parent = NULL;
+    d_root.parent = &d_root;
     d_root.flags = 0;
     atomic_set(&d_root.ref, 0);
 
@@ -47,25 +49,6 @@ void unregister_filesystem(const char *name)
         if (strcmp(fs->name, name) == 0)
             list_del(&fs->list);
     }
-}
-
-void dput(struct dentry *entry)
-{
-    if (list_empty(&entry->subdirs))
-        return;
-
-    struct dentry *pos = NULL;
-    struct dentry *before = NULL;
-    list_foreach_entry(&entry->subdirs, pos, child) {
-        if (before)
-            kfree(before);
-
-        dput(pos);
-        before = pos;
-    }
-
-    if (before)
-        kfree(before);
 }
 
 inline struct superblock *alloc_super(struct filesystem *fs, dev_t dev)
@@ -193,55 +176,120 @@ int umount(struct dentry *mountpoint)
     return 0;
 }
 
-struct inode *alloc_inode(struct superblock *sb)
-{
-
-}
-
 static __force_inline u64 hash_inode(struct superblock *sb, ino_t ino)
 {
     return (uintptr_t)sb ^ ino;
 }
 
-struct inode *iget(struct superblock *sb, ino_t ino)
+// struct inode *iget(struct superblock *sb, ino_t ino)
+// {
+//     struct inode *inode = NULL;
+//     list_foreach_entry(&sb->inodes, inode, sb_list) {
+//         if (inode->ino == ino) {
+//             atomic_inc(&inode->ref);
+//             return inode;
+//         }
+//     }
+
+//     inode = sb->ops->alloc_inode(sb);
+//     inode->ino = ino;
+
+//     hash_add(inohash, &inode->hnode, hash_inode(sb, ino));
+//     list_add(&inode->sb_list, &sb->inodes);
+//     return inode;
+// }
+
+// int iput(struct inode *inode)
+// {
+//     if (!inode)
+//         return -ENOENT;
+
+//     if (!atomic_dec_and_test(&inode->ref))
+//         return -EBUSY;
+    
+//     if (inode->links == 0)
+//         inode->sb->ops->evict_inode(inode);
+
+//     list_del(&inode->sb_list);
+//     hlist_del(&inode->hnode);
+
+//     kfree(inode);
+//     return 0;
+// }
+
+static __force_inline u64 d_hash(struct dentry *parent, struct qstr *name)
 {
-    struct inode *inode = NULL;
-    list_foreach_entry(&sb->inodes, inode, sb_list) {
-        if (inode->ino == ino) {
-            atomic_inc(&inode->ref);
-            return inode;
-        }
-    }
-
-    inode = alloc_inode(sb);
-    inode->ino = ino;
-
-    if (sb->ops->read_inode(inode)) {
-        kfree(inode);
-        return NULL;
-    }
-
-    hash_add(inohash, &inode->hnode, hash_inode(sb, ino));
-    list_add(&inode->sb_list, &sb->inodes);
-    return inode;
+    u64 key = 0;
+    for (int i = 0; i < name->len; ++i)
+        key ^= name->str[i];
+    return key ^ (uintptr_t)parent;
 }
 
-int iput(struct inode *inode)
+struct dentry *d_alloc(struct dentry *parent, struct qstr *name)
 {
-    if (!inode)
-        return -ENOENT;
+    struct dentry *entry = (struct dentry *)kmalloc(sizeof(struct dentry), PAL_KERNEL);
+    if (!entry)
+        return NULL;
 
-    if (!atomic_dec_and_test(&inode->ref))
-        return -EBUSY;
-    
-    if (inode->links == 0) {
-        if (inode->ops && inode->ops->truncate)
-            inode->ops->truncate(inode);
+    entry->inode = NULL;
+    entry->name.str = strdup(name->str);
+    entry->name.len = name->len;
+    entry->parent = dget(parent);
+    entry->flags = 0;
+
+    hash_add(dcache, &entry->hnode, d_hash(parent, name));
+    list_add(&entry->child, &parent->subdirs);
+    list_head_init(&entry->subdirs);
+
+    atomic_set(&entry->ref, 1);
+
+    return entry;
+}
+
+void d_instantiate(struct dentry *dentry, struct inode *inode)
+{
+    dentry->inode = inode;
+}
+
+struct dentry *d_lookup(struct dentry *parent, struct qstr *name)
+{
+    /* First, check dcache */
+    struct dentry *entry = NULL;
+    hlist_for_each_possible(dcache, entry, hnode, d_hash(parent, name)) {
+        if (qstr_cmp(&entry->name, name) && entry->parent == parent)
+            return dget(entry);
     }
 
-    list_del(&inode->sb_list);
-    hlist_del(&inode->hnode);
+    entry = d_alloc(parent, name);
+    parent->inode->ops->lookup(parent->inode, entry, 0);
 
-    kfree(inode);
-    return 0;
+    return entry;
+}
+
+void d_delete(struct dentry *dentry)
+{
+
+}
+
+struct dentry *dget(struct dentry *dentry)
+{
+    atomic_inc(&dentry->ref);
+    return dentry;
+}
+
+void dput(struct dentry *dentry)
+{
+    if (!atomic_dec_and_test(&dentry->ref))
+        return;
+
+    list_del(&dentry->child);
+
+    if (dentry->inode) 
+        iput(dentry->inode);
+
+    if (dentry->parent)
+        dput(dentry->parent);
+    
+    hlist_del(&dentry->hnode);
+    kfree(dentry);
 }

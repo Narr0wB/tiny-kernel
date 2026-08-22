@@ -8,5 +8,7 @@
 #define EINVAL 4
 #define ENODIR 5
 #define EBUSY  6
+#define ENOTDIR   7
+#define ENOTEMPTY 8
 
 #endif // ERRNO_H

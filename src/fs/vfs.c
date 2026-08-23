@@ -14,7 +14,6 @@ static LIST_HEAD(filesystems);
 static LIST_HEAD(superblocks);
 
 struct dentry d_root;
-struct inode  i_root;
 struct mount  mnt_root;
 
 void init_vfs()
@@ -27,7 +26,6 @@ void init_vfs()
     list_head_init(&mnt_root.child);
     list_head_init(&mnt_root.sub_mnts);
 
-    d_root.inode = &i_root;
     d_root.name = QSTR("/");
     d_root.parent = &d_root;
     d_root.flags = 0;
@@ -39,7 +37,7 @@ void init_vfs()
 
 void register_filesystem(struct filesystem *fs)
 {
-    list_add(fs, &filesystems);
+    list_add(&fs->list, &filesystems);
 }
 
 void unregister_filesystem(const char *name)
@@ -84,7 +82,7 @@ struct superblock *sget(struct filesystem *fs, dev_t dev)
     if (!sb)
         return NULL;
 
-    if (fs->fill_super(sb) != 0) {
+    if (fs->fill_super(sb)) {
         kfree(sb);
         return NULL;
     }
@@ -232,7 +230,7 @@ struct dentry *d_alloc(struct dentry *parent, struct qstr *name)
         return NULL;
 
     entry->inode = NULL;
-    entry->name.str = strdup(name->str);
+    entry->name.str = kstrdup(name->str, name->len);
     entry->name.len = name->len;
     entry->parent = dget(parent);
     entry->flags = 0;
@@ -251,6 +249,21 @@ void d_instantiate(struct dentry *dentry, struct inode *inode)
     dentry->inode = inode;
 }
 
+void d_delete(struct dentry *dentry)
+{
+    list_del(&dentry->child);
+    hlist_del(&dentry->hnode);
+
+    if (dentry->inode) 
+        iput(dentry->inode);
+
+    if (dentry->parent)
+        dput(dentry->parent);
+
+    kfree(dentry->name.str);
+    kfree(dentry);
+}
+
 struct dentry *d_lookup(struct dentry *parent, struct qstr *name)
 {
     /* First, check dcache */
@@ -260,15 +273,20 @@ struct dentry *d_lookup(struct dentry *parent, struct qstr *name)
             return dget(entry);
     }
 
+    /* Second, check children of parent */
+    list_foreach_entry(&parent->subdirs, entry, child) {
+        if (qstr_cmp(&entry->name, name) && entry->parent == parent)
+            return dget(entry);
+    }
+
+    /* Third, create entry in the dtree */
     entry = d_alloc(parent, name);
-    parent->inode->ops->lookup(parent->inode, entry, 0);
+    if (!entry || parent->inode->ops->lookup(parent->inode, entry, 0)) {
+        dput(entry);
+        return NULL;
+    }
 
     return entry;
-}
-
-void d_delete(struct dentry *dentry)
-{
-
 }
 
 struct dentry *dget(struct dentry *dentry)
@@ -282,14 +300,5 @@ void dput(struct dentry *dentry)
     if (!atomic_dec_and_test(&dentry->ref))
         return;
 
-    list_del(&dentry->child);
-
-    if (dentry->inode) 
-        iput(dentry->inode);
-
-    if (dentry->parent)
-        dput(dentry->parent);
-    
-    hlist_del(&dentry->hnode);
-    kfree(dentry);
+    d_delete(dentry);
 }

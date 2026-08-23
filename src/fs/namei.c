@@ -31,7 +31,7 @@ int path_walk(struct path cwd, const char *path, struct dentry **out)
         u32 comp_len = get_component_len(path);
 
         if (comp_len == 1 && path[0] == '.') {
-            path += 1;
+            goto advance;
         }
         else if (comp_len == 2 && path[0] == '.' && path[1] == '.') {
             if (p.dentry == p.mnt->root) {
@@ -41,18 +41,21 @@ int path_walk(struct path cwd, const char *path, struct dentry **out)
             else {
                 p.dentry = p.dentry->parent;
             }
-
-            path += 2;
+            goto advance;
         }
 
         struct qstr component = { .str = path, .len = comp_len };
         p.dentry = d_lookup(p.dentry, &component);
+        if (!p.dentry)
+            return -ENODIR;
 
+    advance:
         path += comp_len;
 
         if (!*path) break;
         while (*path == '/') { path++; }
-
-        if (!*path) break;
     }
+
+    *out = p.dentry;
+    return 0;
 }

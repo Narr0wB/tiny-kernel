@@ -4,6 +4,7 @@
 #include <tiny/fs/ramfs.h>
 
 static u32 ramfs_monotonic_count = 0;
+static struct inode_ops ramfs_iops;
 
 static u32 ramfs_get_next_ino()
 {
@@ -40,8 +41,6 @@ static struct inode *ramfs_get_inode(struct superblock *sb, struct inode *dir, m
     return inode;
 }
 
-
-
 /* For ramfs, we will use the dentry tree for lookups */
 static int ramfs_lookup(struct inode *dir, struct dentry *negative, u32 flags)
 {
@@ -50,20 +49,32 @@ static int ramfs_lookup(struct inode *dir, struct dentry *negative, u32 flags)
 
 static int ramfs_create(struct inode *dir, struct dentry *negative, mode_t mode)
 {
-    struct inode *inode = ramfs_get_inode(dir->sb, dir, mode, dir->sb->device);
+    struct inode *inode = ramfs_get_inode(dir->sb, dir, mode | S_IFREG, dir->sb->device);
+
+    if (!inode)
+        return -ENOMEM;
+
+    d_instantiate(negative, inode);
+    return 0;
 }
 
-static int ramfs_mkdir(struct inode *dir)
+static int ramfs_mkdir(struct inode *dir, struct dentry *negative, mode_t mode)
+{
+    struct inode *inode = ramfs_get_inode(dir->sb, dir, mode | S_IFDIR, dir->sb->device);
+
+    if (!inode)
+        return -ENOMEM;
+
+    d_instantiate(negative, inode);
+    return 0;
+}
+
+static int ramfs_rmdir(struct inode *dir, struct dentry *entry)
 {
 
 }
 
-static int ramfs_rmdir(struct inode *dir)
-{
-
-}
-
-static const struct inode_ops ramfs_iops = {
+ramfs_iops = {
     .lookup = ramfs_lookup,
     .create = ramfs_create,
     .mkdir  = ramfs_mkdir,
@@ -82,7 +93,7 @@ static void ramfs_evict_inode(struct inode *inode)
 
 }
 
-static const struct superblock_ops ramfs_sbops = {
+static struct superblock_ops ramfs_sbops = {
     .alloc_inode = ramfs_alloc_inode,
     .evict_inode = ramfs_evict_inode
 };
@@ -91,15 +102,17 @@ static const struct superblock_ops ramfs_sbops = {
 
 static int ramfs_fill_super(struct superblock *sb)
 {
+    sb->ops = &ramfs_sbops;
+    sb->root = d_alloc(NULL, { .str = "/", .len = 1 });
     return 0;
 }
 
 static void ramfs_kill_super(struct superblock *sb)
 {
-
+    return 0;
 }
 
-static const struct filesystem ramfs = {
+static struct filesystem ramfs = {
     .name       = "ramfs",
     .flags      = 0,
     .fill_super = ramfs_fill_super,
@@ -112,6 +125,8 @@ extern struct dentry d_root;
 int init_ramfs()
 {
     register_filesystem(&ramfs);
-    int err = mount_bdev(&ramfs, 0, &mnt_root, &d_root);
-    return err;
+    if (!mount_bdev(&ramfs, 0, &mnt_root, &d_root))
+        return -1;
+
+    return 0;
 }

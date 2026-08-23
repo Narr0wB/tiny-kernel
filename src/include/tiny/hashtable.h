@@ -29,7 +29,7 @@ struct hlist_head {
 
 static __force_inline uint32_t hash(uint64_t key, uint8_t bits)
 {
-    return (key * HASH_MAGIC) / (1ULL << bits);
+    return (key * HASH_MAGIC) & ((1ULL << bits) - 1);
 }
 
 static __force_inline void hlist_add_head(struct hlist_node *node, struct hlist_head *bucket)
@@ -43,11 +43,11 @@ static __force_inline void hlist_add_head(struct hlist_node *node, struct hlist_
 
 static __force_inline void hlist_del(struct hlist_node *node)
 {
-    struct hlist_node *prev = container_of(node->pprev, struct hlist_node, pprev);
     struct hlist_node *next = node->next;
 
-    prev->next = next;
-    next->pprev = &prev->next;
+    *node->pprev = next;
+    if (next)
+        next->pprev = node->pprev;
 }
 
 #define hash_add(table, node, key) \

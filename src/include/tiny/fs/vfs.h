@@ -41,7 +41,7 @@ struct superblock_ops {
     int           (*drop_inode)(struct inode *);
     void          (*evict_inode)(struct inode *);
 
-    int  (*statfs) (struct superblock *, void *);
+    int           (*statfs) (struct superblock *, void *);
 };
 
 struct superblock {
@@ -78,7 +78,6 @@ struct dentry {
 struct dentry *d_alloc(struct dentry *parent, struct qstr *name);
 void           d_instantiate(struct dentry *dentry, struct inode *inode);
 struct dentry *d_lookup(struct dentry *parent, struct qstr *name);
-void           d_delete(struct dentry *entry);
 struct dentry *dget(struct dentry *dentry);
 void           dput(struct dentry *dentry);
 

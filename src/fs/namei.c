@@ -7,7 +7,7 @@ extern struct dentry d_root;
 static __force_inline u32 get_component_len(const char *name)
 {
     u32 len = 0;
-    do { len++; } while (name[len] != '/' && name[len]);
+    while (name[len] && name[len] != '/') { len++; }
     return len;
 }
 
@@ -51,9 +51,8 @@ int path_walk(struct path cwd, const char *path, struct dentry **out)
 
     advance:
         path += comp_len;
-
-        if (!*path) break;
         while (*path == '/') { path++; }
+        if (!*path) break;
     }
 
     *out = p.dentry;

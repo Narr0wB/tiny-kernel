@@ -18,9 +18,10 @@ struct inode;
 struct inode_ops;
 struct file;
 
-typedef uint32_t ino_t;
-typedef uint32_t mode_t;
-typedef uint64_t time_t;
+typedef u32 ino_t;
+typedef u32 mode_t;
+typedef u64 time_t;
+typedef u64 loff_t;
 
 struct filesystem {
     const char      *name;
@@ -78,31 +79,22 @@ struct dentry {
 struct dentry *d_alloc(struct dentry *parent, struct qstr *name);
 void           d_instantiate(struct dentry *dentry, struct inode *inode);
 struct dentry *d_lookup(struct dentry *parent, struct qstr *name);
+void           d_delete(struct dentry *dir);
 struct dentry *dget(struct dentry *dentry);
 void           dput(struct dentry *dentry);
 
 struct inode_ops {
-    /* Resolve dentry->name in dir. Hit: bind dentry->inode, return 0.
-     * Miss: leave dentry negative (inode == NULL), return 0. */
     int (*lookup)(struct inode *, struct dentry *, u32);
-
-    /* Create regular file dentry->name in dir; bind dentry to new inode. */
     int (*create)(struct inode *, struct dentry *, mode_t);
-
-    /* Create subdirectory dentry->name in dir; bind dentry to new inode. */
     int (*mkdir)(struct inode *, struct dentry *, mode_t);
-
-    /* Remove empty directory dentry from parent dir. */
     int (*rmdir)(struct inode *, struct dentry *);
-
-    /* Remove non-dir dentry from dir; drop a link. */
     int (*unlink)(struct inode *, struct dentry *);
-
-    /* (old_dir, old_dentry, new_dir, new_dentry, flags) */
     int (*rename)(struct inode *, struct dentry *, struct inode *, struct dentry *, u32);
-
-    /* Free data blocks when links hit 0 (called from iput). */
     int (*truncate)(struct inode *);
+};
+
+struct file_ops {
+
 };
 
 struct inode {
@@ -124,6 +116,15 @@ struct inode {
     struct hlist_node  hnode;
 
     void              *private;
+};
+
+struct file {
+    struct dentry   *dentry;
+    struct mount    *mount;
+    struct file_ops *ops;
+    u32              flags;
+    u32              mode;
+    loff_t           pos;
 };
 
 #define S_IFMT   0170000   /* type mask */
@@ -184,5 +185,17 @@ int iput(struct inode *inode);
 
 struct mount *mount_bdev(struct filesystem *fs, dev_t dev, struct mount *parent, struct dentry *mountpoint);
 int umount_bdev(struct dentry *mountpoint);
+
+struct statfs {
+
+};
+
+int vfs_open(struct dentry *file);
+int vfs_close(struct dentry *file);
+int vfs_read(struct dentry *file, size_t pos, void *buf, size_t sz);
+int vfs_write(struct dentry *file, size_t pos, void *buf, size_t sz);
+int vfs_stat(struct dentry *file, struct statfs *stats);
+int vfs_mkdir(struct dentry *parent);
+int vfs_rmdir(struct dentry *dir);
 
 #endif // VFS_H

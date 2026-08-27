@@ -41,10 +41,12 @@ static struct inode *ramfs_get_inode(struct superblock *sb, struct inode *dir, m
     return inode;
 }
 
+
+
 /* For ramfs, we will use the dentry tree for lookups */
 static int ramfs_lookup(struct inode *dir, struct dentry *negative, u32 flags)
 {
-    return 0;
+    return -1;
 }
 
 static int ramfs_create(struct inode *dir, struct dentry *negative, mode_t mode)
@@ -71,10 +73,13 @@ static int ramfs_mkdir(struct inode *dir, struct dentry *negative, mode_t mode)
 
 static int ramfs_rmdir(struct inode *dir, struct dentry *entry)
 {
-
+    if (!list_empty(&entry->subdirs))
+        return -ENOTEMPTY;
+    
+    return 0;
 }
 
-ramfs_iops = {
+static struct inode_ops ramfs_iops = {
     .lookup = ramfs_lookup,
     .create = ramfs_create,
     .mkdir  = ramfs_mkdir,
@@ -103,13 +108,13 @@ static struct superblock_ops ramfs_sbops = {
 static int ramfs_fill_super(struct superblock *sb)
 {
     sb->ops = &ramfs_sbops;
-    sb->root = d_alloc(NULL, { .str = "/", .len = 1 });
+    struct qstr name = { .str = "/", .len = 1 };
+    sb->root = d_alloc(NULL, &name);
     return 0;
 }
 
 static void ramfs_kill_super(struct superblock *sb)
 {
-    return 0;
 }
 
 static struct filesystem ramfs = {

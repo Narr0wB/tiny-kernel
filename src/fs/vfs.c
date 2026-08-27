@@ -232,8 +232,12 @@ struct dentry *d_alloc(struct dentry *parent, struct qstr *name)
     entry->inode = NULL;
     entry->name.str = kstrdup(name->str, name->len);
     entry->name.len = name->len;
-    entry->parent = dget(parent);
     entry->flags = 0;
+
+    if (!parent)
+        entry->parent = entry;
+    else
+        entry->parent = dget(parent);
 
     hash_add(dcache, &entry->hnode, d_hash(parent, name));
     list_add(&entry->child, &parent->subdirs);
@@ -301,4 +305,24 @@ void dput(struct dentry *dentry)
         return;
 
     d_delete(dentry);
+}
+
+
+int vfs_rmdir(struct dentry *dir)
+{
+    if (!dir->inode)
+        return -EINVAL;
+
+    if (!d_is_dir(dir))
+        return -ENODIR;
+
+    if (dir->flags & DCACHE_MOUNTED)
+        return -EBUSY;
+    
+    int err = dir->inode->ops->rmdir(dir->inode, dir);
+    if (err)
+        return err;
+
+    d_delete(dir);
+    return 0;
 }

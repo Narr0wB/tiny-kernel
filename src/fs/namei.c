@@ -11,19 +11,25 @@ static __force_inline u32 get_component_len(const char *name)
     return len;
 }
 
-int path_walk(struct path cwd, const char *path, struct dentry **out)
+int path_walk(const struct path *cwd, const char *path, struct path *out)
 {
     if (path == NULL || out == NULL)
         return -EINVAL;
 
     struct path p = {0};
+
     if (path[0] == '/') {
         p.mnt = &mnt_root;
         p.dentry = &d_root;
         path++;
     }
     else {
-        p = cwd;
+        if (!cwd)
+            return -EINVAL;
+
+        p.dentry = cwd->dentry;
+        p.mnt    = cwd->mnt;
+
         panic("not implemented yet");
     }
 
@@ -45,7 +51,18 @@ int path_walk(struct path cwd, const char *path, struct dentry **out)
         }
 
         struct qstr component = { .str = path, .len = comp_len };
-        p.dentry = d_lookup(p.dentry, &component);
+
+        /* Mount pivoting */
+        if (p.dentry->flags & DCACHE_MOUNTED) {
+            p.mnt = vfs_lookup_mount(p.dentry);
+            if (!p.mnt)
+                return -ENOENT;
+            
+            p.dentry = p.mnt->root;
+        }
+
+        p.dentry = dlookup(p.dentry, &component);
+
         if (!p.dentry)
             return -ENODIR;
 
@@ -55,6 +72,6 @@ int path_walk(struct path cwd, const char *path, struct dentry **out)
         if (!*path) break;
     }
 
-    *out = p.dentry;
+    *out = p;
     return 0;
 }

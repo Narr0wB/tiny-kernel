@@ -8,6 +8,7 @@
 #include <tiny/assert.h>
 #include <tiny/hashtable.h>
 #include <tiny/errno.h>
+#include <tiny/string.h>
 #include <tiny/fs/inode.h>
 #include <tiny/device/device.h>
 
@@ -40,6 +41,8 @@ struct mount;
 struct inode;
 struct inode_ops;
 struct file;
+struct stat;
+struct statfs;
 
 typedef u32 ino_t;
 typedef u32 mode_t;
@@ -55,19 +58,16 @@ struct filesystem {
     void (*kill_super)(struct superblock *);
 };
 
+void register_filesystem(struct filesystem *fs);
+void unregister_filesystem(const char *name);
 
 
 struct superblock_ops {
     struct inode *(*alloc_inode)(struct superblock *);
-    void          (*destroy_inode)(struct inode *);
     void          (*free_inode)(struct inode *);
-
-    void          (*dirty_inode)(struct inode *, int);
     int           (*write_inode)(struct inode *);
-    int           (*drop_inode)(struct inode *);
     void          (*evict_inode)(struct inode *);
-
-    int           (*statfs) (struct superblock *, void *);
+    int           (*statfs) (struct superblock *, struct statfs *);
 };
 
 struct superblock {
@@ -79,6 +79,7 @@ struct superblock {
     uint32_t               flags;
     struct dentry         *root;
     atomic_t               count;
+    void                  *private;
 };
 
 
@@ -87,22 +88,37 @@ struct superblock {
 struct dentry {
     struct inode     *inode;
     struct qstr       name;
-
     struct dentry    *parent;
     struct hlist_node hnode;
     struct list_head  child;
     struct list_head  subdirs;
-
     u32               flags;
     atomic_t          ref;
 };
 
 struct dentry *dalloc(struct dentry *parent, struct qstr *name);
-void           dinstantiate(struct dentry *dentry, struct inode *inode);
 struct dentry *dlookup(struct dentry *parent, struct qstr *name);
 void           ddelete(struct dentry *dir);
-struct dentry *dget(struct dentry *dentry);
-void           dput(struct dentry *dentry);
+
+static __force_inline void dinstantiate(struct dentry *dentry, struct inode *inode)
+{
+    // atomic_inc(&inode->ref);
+    dentry->inode = inode;
+}
+
+static __force_inline struct dentry *dget(struct dentry *dentry)
+{
+    atomic_inc(&dentry->ref);
+    return dentry;
+}
+
+static __force_inline void dput(struct dentry *dentry)
+{
+    if (!atomic_dec_and_test(&dentry->ref))
+        return;
+
+    ddelete(dentry);
+}
 
 
 
@@ -111,14 +127,15 @@ struct inode_ops {
     int (*create)(struct inode *, struct dentry *, mode_t);
     int (*mkdir)(struct inode *, struct dentry *, mode_t);
     int (*rmdir)(struct inode *, struct dentry *);
-    int (*unlink)(struct inode *, struct dentry *);
     int (*rename)(struct inode *, struct dentry *, struct inode *, struct dentry *, u32);
     int (*truncate)(struct inode *);
 };
 
 struct file_ops {
-    ssize_t (*read)(struct file *f, void *buf, size_t sz);
-    ssize_t (*write)(struct file *f, const void *buf, size_t sz);
+    int     (*open)(struct inode *, struct file **, u32);
+    void    (*release)(struct file *);
+    ssize_t (*read)(struct file *, void *, size_t);
+    ssize_t (*write)(struct file *, const void *, size_t);
 };
 
 struct inode {
@@ -127,29 +144,27 @@ struct inode {
     mode_t             mode;
     size_t             size;
     u32                links;
-
     time_t             atime, mtime, ctime;
-    u32                type;
-
-    atomic_t           ref;
-
     struct inode_ops  *ops;
     struct file_ops   *fops;
-
     struct list_head   sb_list;
     struct hlist_node  hnode;
-
     void              *private;
+    atomic_t           ref;
 };
 
 struct file {
-    struct dentry   *dentry;
-    struct mount    *mount;
+    struct inode    *inode;
     struct file_ops *ops;
     u32              flags;
     u32              mode;
     loff_t           pos;
 };
+
+struct inode *iget(struct superblock *sb, ino_t ino);
+void          iput(struct inode *ino);
+
+
 
 struct mount {
     struct mount      *parent;
@@ -157,12 +172,9 @@ struct mount {
     struct dentry     *mountpoint;
     struct dentry     *root;
     struct list_head   child;
-    struct list_head   sub_mnts;
+    struct list_head   submnts;
     struct hlist_node  hnode;
 };
-
-struct stat;
-struct statfs;
 
 struct path {
     struct mount  *mnt;
@@ -193,19 +205,11 @@ static __force_inline struct inode *new_inode(struct superblock *sb)
 }
 
 
-void register_filesystem(struct filesystem *fs);
-void unregister_filesystem(const char *name);
-
-struct inode *iget(struct superblock *sb, ino_t ino);
-int iput(struct inode *inode);
-
-
-
 struct mount *vfs_mount(struct filesystem *fs, dev_t dev, struct path *path);
 int vfs_umount(struct dentry *mountpoint);
 struct mount *vfs_lookup_mount(struct dentry *mountpoint);
 
-int vfs_open(const struct path *path, u32 flags, struct file **result);
+int vfs_open(const struct path *path, struct file **result, u32 flags);
 int vfs_close(struct file *f);
 
 ssize_t vfs_read(struct file *f, void *buf, size_t sz);
@@ -215,7 +219,10 @@ int vfs_getattr(const struct path *path, struct stat *stat);
 int vfs_statfs(struct superblock *sb, struct statfs *stat);
 
 int vfs_create(struct inode *parent, struct dentry *negative, mode_t mode);
+int vfs_remove(struct inode *parent, struct dentry *dentry);
 int vfs_mkdir(struct inode *parent, struct dentry *negative, mode_t mode);
 int vfs_rmdir(struct inode *parent, struct dentry *dir);
+
+void init_vfs();
 
 #endif // VFS_H

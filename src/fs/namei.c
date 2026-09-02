@@ -1,8 +1,7 @@
 
 #include <tiny/fs/namei.h>
 
-extern struct mount  mnt_root;
-extern struct dentry d_root;
+extern struct dentry droot;
 
 static __force_inline u32 get_component_len(const char *name)
 {
@@ -19,8 +18,8 @@ int path_walk(const struct path *cwd, const char *path, struct path *out)
     struct path p = {0};
 
     if (path[0] == '/') {
-        p.mnt = &mnt_root;
-        p.dentry = &d_root;
+        p.mnt = vfs_lookup_mount(&droot);
+        p.dentry = p.mnt->root;
         path++;
     }
     else {
@@ -50,8 +49,6 @@ int path_walk(const struct path *cwd, const char *path, struct path *out)
             goto advance;
         }
 
-        struct qstr component = { .str = path, .len = comp_len };
-
         /* Mount pivoting */
         if (p.dentry->flags & DCACHE_MOUNTED) {
             p.mnt = vfs_lookup_mount(p.dentry);
@@ -61,6 +58,7 @@ int path_walk(const struct path *cwd, const char *path, struct path *out)
             p.dentry = p.mnt->root;
         }
 
+        struct qstr component = { .str = path, .len = comp_len };
         p.dentry = dlookup(p.dentry, &component);
 
         if (!p.dentry)

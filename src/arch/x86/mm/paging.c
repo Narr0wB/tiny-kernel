@@ -3,6 +3,8 @@
 #include <arch/irq.h>
 #include <arch/asm.h>
 #include <arch/cpu.h>
+#include <arch/backtrace.h>
+
 #include <tiny/mm/bootmem.h>
 #include <tiny/mm/types.h>
 #include <tiny/mm/vasl.h>
@@ -18,6 +20,7 @@ static void page_fault_handler(struct irq_frame *frame, void *data)
 {
     paddr_t cr2 = cpu_get_cr2();
     kprintf(KERN_ERROR, "Had a pagefault trying to access addr %p, error code: %d", cr2, frame->err_code);
+    dump_stack_backtrace((void*)frame->rsp, KERN_ERROR);
 
     while (1) {
         hlt();

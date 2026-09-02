@@ -7,33 +7,13 @@
 #include <tiny/fs/vfs.h>
 
 static DEFINE_HASHTABLE(mnthash, 5);
-static DEFINE_HASHTABLE(inohash, 12);
 static DEFINE_HASHTABLE(dcache,  12);
 
 static LIST_HEAD(filesystems);
 static LIST_HEAD(superblocks);
 
-struct dentry d_root;
-struct mount  mnt_root;
-
-void init_vfs()
-{
-    mnt_root.mountpoint = &d_root;
-    mnt_root.root = &d_root;
-    mnt_root.parent = &mnt_root;
-    mnt_root.sb = NULL;
-
-    list_head_init(&mnt_root.child);
-    list_head_init(&mnt_root.sub_mnts);
-
-    d_root.name = QSTR("/");
-    d_root.parent = &d_root;
-    d_root.flags = 0;
-    atomic_set(&d_root.ref, 0);
-
-    list_head_init(&d_root.child);
-    list_head_init(&d_root.subdirs);
-}
+struct dentry droot;
+struct inode  iroot;
 
 void register_filesystem(struct filesystem *fs)
 {
@@ -49,19 +29,21 @@ void unregister_filesystem(const char *name)
     }
 }
 
-inline struct superblock *alloc_super(struct filesystem *fs, dev_t dev)
+struct superblock *alloc_super(struct filesystem *fs, dev_t dev)
 {
     struct superblock *s = kmalloc(sizeof(struct superblock), PAL_KERNEL);
     if (!s)
         return NULL;
 
     s->ops = NULL;
-    list_head_init(&s->list);
-    list_head_init(&s->inodes);
     s->fs = fs;
     s->device = dev;
     s->flags = 0;
     s->root = NULL;
+
+    list_head_init(&s->list);
+    list_head_init(&s->inodes);
+
     atomic_set(&s->count, 1);
 
     return s;
@@ -114,41 +96,32 @@ static __force_inline u64 hash_inode(struct superblock *sb, ino_t ino)
     return (uintptr_t)sb ^ ino;
 }
 
-// struct inode *iget(struct superblock *sb, ino_t ino)
-// {
-//     struct inode *inode = NULL;
-//     list_foreach_entry(&sb->inodes, inode, sb_list) {
-//         if (inode->ino == ino) {
-//             atomic_inc(&inode->ref);
-//             return inode;
-//         }
-//     }
+struct inode *iget(struct superblock *sb, ino_t ino)
+{
+    struct inode *inode = NULL;
+    list_foreach_entry(&sb->inodes, inode, sb_list) {
+        if (inode->ino == ino) {
+            atomic_inc(&inode->ref);
+            return inode;
+        }
+    }
 
-//     inode = sb->ops->alloc_inode(sb);
-//     inode->ino = ino;
+    inode = sb->ops->alloc_inode(sb);
+    inode->ino = ino;
 
-//     hash_add(inohash, &inode->hnode, hash_inode(sb, ino));
-//     list_add(&inode->sb_list, &sb->inodes);
-//     return inode;
-// }
+    list_add(&inode->sb_list, &sb->inodes);
+    return inode;
+}
 
-// int iput(struct inode *inode)
-// {
-//     if (!inode)
-//         return -ENOENT;
-
-//     if (!atomic_dec_and_test(&inode->ref))
-//         return -EBUSY;
+void iput(struct inode *inode)
+{
+    if (!atomic_dec_and_test(&inode->ref))
+        return;
     
-//     if (inode->links == 0)
-//         inode->sb->ops->evict_inode(inode);
+    list_del(&inode->sb_list);
 
-//     list_del(&inode->sb_list);
-//     hlist_del(&inode->hnode);
-
-//     kfree(inode);
-//     return 0;
-// }
+    kfree(inode);
+}
 
 static __force_inline u64 dhash(struct dentry *parent, struct qstr *name)
 {
@@ -165,42 +138,28 @@ struct dentry *dalloc(struct dentry *parent, struct qstr *name)
         return NULL;
 
     entry->inode = NULL;
-    entry->name.str = kstrdup(name->str, name->len);
-    entry->name.len = name->len;
     entry->flags = 0;
 
-    if (!parent)
-        entry->parent = entry;
-    else
+    if (name) {
+        entry->name.str = kstrdup(name->str, name->len);
+        entry->name.len = name->len;
+
+        /* Anonymous dentries are usually superblock/mount roots, which do not need cached */
+        hash_add(dcache, &entry->hnode, dhash(parent, name));
+    }
+
+    if (parent) {
         entry->parent = dget(parent);
+        list_add(&entry->child, &parent->subdirs);
+    }
+    else {
+        entry->parent = entry;
+    }
 
-    hash_add(dcache, &entry->hnode, dhash(parent, name));
-    list_add(&entry->child, &parent->subdirs);
-    list_headinit(&entry->subdirs);
-
+    list_head_init(&entry->subdirs);
     atomic_set(&entry->ref, 1);
 
     return entry;
-}
-
-void dinstantiate(struct dentry *dentry, struct inode *inode)
-{
-    dentry->inode = inode;
-}
-
-void ddelete(struct dentry *dentry)
-{
-    list_del(&dentry->child);
-    hlist_del(&dentry->hnode);
-
-    if (dentry->inode) 
-        iput(dentry->inode);
-
-    if (dentry->parent)
-        dput(dentry->parent);
-
-    kfree(dentry->name.str);
-    kfree(dentry);
 }
 
 struct dentry *dlookup(struct dentry *parent, struct qstr *name)
@@ -228,18 +187,19 @@ struct dentry *dlookup(struct dentry *parent, struct qstr *name)
     return entry;
 }
 
-struct dentry *dget(struct dentry *dentry)
+void ddelete(struct dentry *dentry)
 {
-    atomic_inc(&dentry->ref);
-    return dentry;
-}
+    list_del(&dentry->child);
+    hlist_del(&dentry->hnode);
 
-void dput(struct dentry *dentry)
-{
-    if (!atomic_dec_and_test(&dentry->ref))
-        return;
+    if (dentry->inode) 
+        iput(dentry->inode);
 
-    ddelete(dentry);
+    if (dentry->parent)
+        dput(dentry->parent);
+
+    kfree(dentry->name.str);
+    kfree(dentry);
 }
 
 
@@ -250,11 +210,17 @@ int graft_tree(struct mount *mnt, struct mount *parent, struct dentry *mountpoin
         return -ENODIR;
 
     mountpoint->flags |= DCACHE_MOUNTED;
-
     mnt->mountpoint = mountpoint;
-    mnt->parent = parent;
 
-    list_add_tail(&mnt->child, &parent->sub_mnts);
+    if (parent) {
+        mnt->parent = parent;
+        list_add_tail(&mnt->child, &parent->submnts);
+    }
+    else {
+        /* We are grafting the root mount */
+        mnt->parent = mnt; 
+    }
+
     hash_add(mnthash, &mnt->hnode, (uint64_t)mountpoint);
 
     return 0;
@@ -268,7 +234,7 @@ struct mount *vfs_mount(struct filesystem *fs, dev_t dev, struct path *path)
 
     struct mount *mnt = kmalloc(sizeof(struct mount), PAL_KERNEL);
 
-    list_head_init(&mnt->sub_mnts);
+    list_head_init(&mnt->submnts);
     mnt->root = sb->root;
     mnt->sb   = sb;
 
@@ -283,7 +249,7 @@ struct mount *vfs_mount(struct filesystem *fs, dev_t dev, struct path *path)
 
 int vfs_umount(struct dentry *mountpoint)
 {
-    if (!(mountpoint->flags & DCACHE_MOUNTED) || mountpoint == &d_root)
+    if (!(mountpoint->flags & DCACHE_MOUNTED) || mountpoint == &droot)
         return -EINVAL;
     
     struct mount *mnt = NULL;
@@ -295,7 +261,7 @@ int vfs_umount(struct dentry *mountpoint)
     if (!mnt)
         return -ENOENT;
 
-    if (!list_empty(&mnt->sub_mnts))
+    if (!list_empty(&mnt->submnts))
         return -EBUSY;
 
     list_del(&mnt->child);
@@ -321,7 +287,7 @@ struct mount *vfs_lookup_mount(struct dentry *mountpoint)
     }
 }
 
-int vfs_open(const struct path *path, u32 flags, struct file **result)
+int vfs_open(const struct path *path, struct file **result, u32 flags)
 {
     if (!path || !path->dentry || !path->mnt)
         return -EINVAL;
@@ -330,19 +296,7 @@ int vfs_open(const struct path *path, u32 flags, struct file **result)
     if (!ino)
         return -ENOENT;
 
-    struct file *file = (struct file *)kmalloc(sizeof(struct file), PAL_KERNEL);
-
-    if (!file)
-        return -ENOMEM;
-
-    file->dentry = dget(path->dentry);
-    file->mount  = path->mnt;
-    file->ops    = ino->fops;
-    file->flags  = 0;
-    file->mode   = 0;
-    file->pos    = 0;
-
-    *result = file;
+    int err = ino->fops->open(ino, result, flags);
     return 0;
 }
 
@@ -351,9 +305,7 @@ int vfs_close(struct file *f)
     if (!f)
         return -EINVAL;
 
-    dput(f->dentry);
-
-    kfree(f);
+    f->ops->release(f);
     return 0;
 }
 
@@ -387,12 +339,61 @@ ssize_t vfs_write(struct file *f, const void *buf, size_t sz)
     return written;
 }
 
+int vfs_getattr(const struct path *path, struct stat *stat)
+{
+    // TODO
+}
+
+int vfs_statfs(struct superblock *sb, struct statfs *stat)
+{
+    // TODO
+}
+
+int vfs_create(struct inode *parent, struct dentry *negative, mode_t mode)
+{
+    if (!parent || !parent->ops || !parent->ops->create || !negative)
+        return -EINVAL;
+
+    if (!S_ISDIR(parent->mode))
+        return -ENODIR;
+
+    int err = parent->ops->create(parent, negative, mode);
+    return err;
+}
+
+int vfs_remove(struct inode *parent, struct dentry *dentry)
+{
+    if (!parent || !parent->ops || !parent->ops->truncate)
+        return -EINVAL;
+
+    if (!dentry || !dentry->inode || d_is_dir(dentry))
+        return -EINVAL;
+
+    if (!S_ISDIR(parent->mode))
+        return -ENODIR;
+    
+    int err = parent->ops->truncate(dentry->inode);
+    return err;
+}
+
+int vfs_mkdir(struct inode *parent, struct dentry *negative, mode_t mode)
+{
+    if (!parent || !parent->ops || !parent->ops->mkdir || !negative)
+        return -EINVAL;
+
+    if (!S_ISDIR(parent->mode))
+        return -ENODIR;
+
+    int err = parent->ops->mkdir(parent, negative, mode);
+    return err;
+}
+
 int vfs_rmdir(struct inode *parent, struct dentry *dir)
 {
     if (!dir || !parent || !dir->inode)
         return -EINVAL;
 
-    if (!d_is_dir(dir))
+    if (!S_ISDIR(parent->mode) || !d_is_dir(dir))
         return -ENODIR;
 
     if (dir->flags & DCACHE_MOUNTED)
@@ -402,6 +403,24 @@ int vfs_rmdir(struct inode *parent, struct dentry *dir)
     if (err)
         return err;
 
-    d_delete(dir);
+    ddelete(dir);
     return 0;
+}
+
+void init_vfs()
+{
+    iroot.ino = 0;
+    iroot.sb  = NULL;
+    iroot.mode = S_IFDIR;
+    iroot.size = 0;
+    iroot.links = 1;
+    iroot.ops   = NULL;
+    iroot.fops  = NULL;
+    atomic_set(&iroot.ref, 1);
+
+    droot.inode = &iroot;
+    droot.name = QSTR("/");
+    droot.parent = &droot;
+    droot.flags = 0;
+    atomic_set(&droot.ref, 0);
 }

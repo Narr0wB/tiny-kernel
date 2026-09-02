@@ -16,6 +16,9 @@
 #include <tiny/mm/kmalloc.h>
 #include <tiny/device/device.h>
 #include <tiny/panic.h>
+#include <tiny/fs/vfs.h>
+#include <tiny/fs/ramfs.h>
+#include <tiny/fs/namei.h>
 
 void clean_efi_memory_map(struct efi_memory_map *mmap) 
 {
@@ -94,6 +97,26 @@ __attribute__((aligned(4096))) int _kentry(struct bootinfo *init_data) {
     init_video(&init_data->framebuffer);
     init_tty();
     init_device();
+
+    kprintf(KERN_DEBUG, "starting vfs"EOL);
+
+    init_vfs();
+    init_ramfs();
+
+    struct path p = {0};
+    int err = path_walk(NULL, "/tmp", &p);
+
+    struct qstr name = QSTR("testfile");
+    struct dentry *entry = dalloc(p.dentry, &name);
+    vfs_create(p.dentry->inode, entry, 0);
+
+    kprintf(KERN_DEBUG, "Create testfile dentry %p"EOL, entry);
+
+    err = path_walk(NULL, "/tmp/testfile", &p);
+    struct file *f;
+    vfs_open(&p, &f, 0);
+
+    kprintf(KERN_DEBUG, "Successfully retrieved path %i %p, dir: %i"EOL, err, p.dentry, S_ISDIR(p.dentry->inode->mode));
 
     while (1) {
         __asm__("hlt");

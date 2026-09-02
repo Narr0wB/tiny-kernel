@@ -88,4 +88,14 @@ static __force_inline void __write_once_size(volatile void *p, const void *v, in
     __v; \
 })
 
+static __force_inline u16 read_le16(void *addr)
+{
+    return *((u16*)addr);
+}
+
+static __force_inline u32 read_le32(void *addr)
+{
+    return *((u32*)addr);
+}
+
 #endif // COMPILER_H

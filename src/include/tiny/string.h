@@ -17,6 +17,18 @@ static __force_inline int strlen(const char *string)
     return count - 1;
 }
 
+extern void *kmalloc(size_t sz, u32 flags);
+
+static __force_inline char *kstrdup(const char *str, size_t len)
+{
+    char *string = (char *)kmalloc(len, 0);
+    if (!string)
+        return NULL;
+
+    memcpy(string, str, len);
+    return string;
+}
+
 struct qstr {
     char *str;
     size_t len;

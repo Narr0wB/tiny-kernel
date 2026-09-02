@@ -6,7 +6,7 @@
 #include <tiny/mm/types.h>
 
 #define SLAB_FRAME_BLOCK_SIZE 3 /* A single slab frame is 2^3 pages, or 8 * 4Kib = 32KiB */
-#define SLAB_POISON 0xCAFEBABE
+#define SLAB_POISON           0xCAFEBABE
 
 #define PAL_KERNEL (0)
 

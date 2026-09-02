@@ -3,6 +3,7 @@
 MESON_OPTIONALS=""
 MESON_CROSS_INI=""
 NINJA_SUPPRESS_WARNINGS=false
+RUN_COMMAND=""
 
 OUTDIR="bin/"
 OSNAME="tinyos"
@@ -14,11 +15,15 @@ for arg in "$@"; do
         --help|-h) 
             echo "Usage: $0 [--clean|-c] [--suppress-warnings|-s]"
             exit 0
-        ;;
+            ;;
+        --run|-r)
+            RUN_COMMAND="./scripts/run-qemu.sh" ;;
+        --rund|--run-debug|-rd)
+            RUN_COMMAND="./scripts/run-qemu.sh --debug" ;;
         *) 
             echo "Unknown arg: $arg" 
             exit 1
-        ;;
+            ;;
     esac
 done
 
@@ -30,7 +35,7 @@ esac
 # Configure and build kernel
 meson setup $MESON_OPTIONALS build/ --cross-file $MESON_CROSS_INI --prefix /kernel
 
-if [ "$NINJA_SUPPRESS_WARNINGS" = true ]; then
+if $NINJA_SUPPRESS_WARNINGS; then
     ninja -C build/ 2>&1 | grep -E -i "(error|failed|stop|undefined)" | head -20
 else
     ninja -C build/ 
@@ -53,3 +58,7 @@ mmd -i $OUTDIR/$OSNAME.img ::/efi/boot
 mmd -i $OUTDIR/$OSNAME.img ::/bin 
 mcopy -i $OUTDIR/$OSNAME.img $OUTDIR/boot/bootx64.efi ::/efi/boot
 mcopy -i $OUTDIR/$OSNAME.img $OUTDIR/kernel/vmtiny.elf ::/bin/
+
+if [ "$RUN_COMMAND" ]; then
+    $RUN_COMMAND
+fi

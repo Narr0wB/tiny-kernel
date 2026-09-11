@@ -1,6 +1,6 @@
 
-#include <arch/drivers/pic.h>
-#include <arch/asm.h>
+#include <arch/x86/drivers/pic.h>
+#include <arch/x86/asm.h>
 
 void init_pic() 
 {

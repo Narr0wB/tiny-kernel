@@ -29,7 +29,7 @@ void unregister_filesystem(const char *name)
     }
 }
 
-struct superblock *alloc_super(struct filesystem *fs, dev_t dev)
+struct superblock *alloc_super(struct filesystem *fs, bdev_t dev)
 {
     struct superblock *s = kmalloc(sizeof(struct superblock), PAL_KERNEL);
     if (!s)
@@ -49,7 +49,7 @@ struct superblock *alloc_super(struct filesystem *fs, dev_t dev)
     return s;
 }
 
-struct superblock *sget(struct filesystem *fs, dev_t dev)
+struct superblock *sget(struct filesystem *fs, bdev_t dev)
 {
     /* If the device already has a superblock, then yield */
     struct superblock *sb = NULL;
@@ -226,7 +226,7 @@ int graft_tree(struct mount *mnt, struct mount *parent, struct dentry *mountpoin
     return 0;
 }
 
-struct mount *vfs_mount(struct filesystem *fs, dev_t dev, struct path *path)
+struct mount *vfs_mount(struct filesystem *fs, bdev_t dev, struct path *path)
 {
     struct superblock *sb = sget(fs, dev);
     if (!sb)

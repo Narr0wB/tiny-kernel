@@ -10,21 +10,6 @@ typedef uintptr_t vaddr_t;
 typedef unsigned long off_t;
 typedef unsigned long pn_t;
 
-struct efi_memory_descriptor {
-    uint32_t    type;
-    uint32_t    pad;
-    paddr_t     phys_start;
-    vaddr_t     virt_start;
-    uint64_t    npages;
-    uint64_t    attribute;
-    uint64_t    padding;
-};
-
-struct efi_memory_map {
-    struct efi_memory_descriptor *map;
-    size_t size;
-};
-
 struct bootmem_region {
     paddr_t start;
     paddr_t end;

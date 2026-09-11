@@ -1,9 +1,9 @@
 
-#include <arch/idt.h>
-#include <arch/irq.h>
-#include <arch/asm.h>
-#include <arch/cpu.h>
-#include <arch/backtrace.h>
+#include <arch/x86/idt.h>
+#include <arch/x86/irq.h>
+#include <arch/x86/asm.h>
+#include <arch/x86/cpu.h>
+#include <arch/x86/backtrace.h>
 
 #include <tiny/mm/bootmem.h>
 #include <tiny/mm/types.h>
@@ -11,28 +11,26 @@
 #include <tiny/compiler.h>
 #include <tiny/io.h>
 
-#include <arch/mm/paging.h>
+#include <arch/x86/mm/paging.h>
 
-__align(0x1000) pgd_t kernel_pgd = {0};
-__align(0x1000) pud_t kernel_pud = {0};
+__align(0x1000) pgd_t kpgd = {0};
+__align(0x1000) pud_t kpud = {0};
 
 static void page_fault_handler(struct irq_frame *frame, void *data) 
 {
     paddr_t cr2 = cpu_get_cr2();
-    kprintf(KERN_ERROR, "Had a pagefault trying to access addr %p, error code: %d", cr2, frame->err_code);
+    kprintf(KERN_ERROR, "Had a pagefault trying to access addr %p, error code: %d"EOL, cr2, frame->err_code);
     dump_stack_backtrace((void*)frame->rsp, KERN_ERROR);
 
-    while (1) {
+    while (1)
         hlt();
-    }
 }
-
 static struct irq_handler pgft_handler = IRQ_HANDLER_INIT("Page fault handler", page_fault_handler, NULL, 0, pgft_handler);
 
 void create_kernel_pagetable(struct memory_info *info)
 {
     int pgd_index = PGD_INDEX(VASL_VIRTUAL_BASE);
-    kernel_pgd.entry[pgd_index] = (v_to_p(&kernel_pud) | PAGE_FLAG_PRESENT | PAGE_FLAG_GLOBAL | PAGE_FLAG_READWRITE);
+    kpgd.entry[pgd_index] = (v_to_p(&kpud) | PAGE_FLAG_PRESENT | PAGE_FLAG_GLOBAL | PAGE_FLAG_READWRITE);
 
     pmd_t *curr_pmd = NULL;
     for (pn_t pfn = 0; pfn < ALIGN_UP(info->max_pfn, 512); pfn += 512) {
@@ -40,9 +38,9 @@ void create_kernel_pagetable(struct memory_info *info)
         vaddr_t virt_addr = P2V(phys_addr);
 
         int pud_index = PUD_INDEX(virt_addr);
-        if (kernel_pud.entry[pud_index] == 0) {
+        if (kpud.entry[pud_index] == 0) {
             curr_pmd = bootmem_alloc(PAGE_SIZE, PAGE_ALIGNMENT);
-            kernel_pud.entry[pud_index] = (v_to_p(curr_pmd) | PAGE_FLAG_PRESENT | PAGE_FLAG_GLOBAL | PAGE_FLAG_READWRITE);
+            kpud.entry[pud_index] = (v_to_p(curr_pmd) | PAGE_FLAG_PRESENT | PAGE_FLAG_GLOBAL | PAGE_FLAG_READWRITE);
         } 
 
         int pmd_index = PMD_INDEX(virt_addr);
@@ -66,5 +64,56 @@ void init_paging(struct memory_info *info)
      */
     register_irq_handler(14, &pgft_handler);
 
-    cpu_set_cr3(v_to_p(&kernel_pgd));
+    cpu_set_cr3(v_to_p(&kpgd));
+}
+
+
+
+void vm_map(pgd_t *pgd, paddr_t phys, vaddr_t virt, size_t size, u64 flags, vm_pt_alloc_t allocator)
+{
+    u32 huge_pages = size / PAGE_SIZE_1G;
+    u32 middle_pages = (size - huge_pages * PAGE_SIZE_1G) / PAGE_SIZE_2M;
+    u32 pages = (middle_pages - huge_pages * PAGE_SIZE_1G - middle_pages * PAGE_SIZE_2M) / PAGE_SIZE_4K;
+
+    for (size_t page = 0; page < huge_pages; ++page) {
+        vaddr_t vaddr = virt + page * PAGE_SIZE_1G;
+        paddr_t paddr = phys + page * PAGE_SIZE_1G;
+
+        u32 pgd_index = PGD_INDEX(vaddr);
+        pud_t *pud = pgd->entry[pgd_index] & PAGE_MASK;
+
+        if (!pud) {
+            struct vm_pt_page pg;
+            allocator(&pg, NULL);
+            pgd->entry[pgd_index] = pud = pg.phys & PAGE_MASK;
+        }
+
+        u32 pud_index = PUD_INDEX(vaddr);
+        pud->entry[pud_index] = (paddr & PAGE_MASK) | (flags & ~PAGE_MASK);
+    }
+
+    for (size_t page = 0; page < middle_pages; ++page) {
+        vaddr_t vaddr = virt + page * PAGE_SIZE_2M;
+
+        u32 pgd_index = PGD_INDEX(vaddr);
+        pud_t *pud = pgd->entry[pgd_index] & PAGE_MASK;
+
+        if (!pud) {
+            struct vm_pt_page pg;
+            allocator(&pg, NULL);
+            pgd->entry[pgd_index] = pud = pg.phys & PAGE_MASK;
+        }
+
+        u32 pud_index = PUD_INDEX(vaddr);
+        u32 pmd_index = PMD_INDEX(vaddr);
+    }
+
+    for (size_t page = 0; page < pages; ++page) {
+        vaddr_t vaddr = virt + page * PAGE_SIZE_4K;
+
+        u32 pgd_index = PGD_INDEX(vaddr);
+        u32 pud_index = PUD_INDEX(vaddr);
+        u32 pmd_index = PMD_INDEX(vaddr);
+        u32 pd_index  = PD_INDEX(vaddr);
+    }
 }

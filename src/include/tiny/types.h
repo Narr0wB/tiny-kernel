@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+
 typedef struct {
     uint64_t r15;
     uint64_t r14;
@@ -36,6 +37,9 @@ typedef int32_t i32;
 typedef int16_t i16;
 typedef int8_t  i8;
 
-typedef int64_t ssize_t;
+typedef i64 ssize_t;
+
+typedef u64 paddr_t;
+typedef u64 vaddr_t;
 
 #endif // TYPES_H

@@ -3,7 +3,7 @@
 #define ARCH_X86_PS2_H
 
 #include <tiny/types.h>
-#include <arch/asm.h>
+#include <arch/x86/asm.h>
 
 #define PS2_CTRL_DATA_PORT      0x60
 #define PS2_CTRL_STATUS_PORT    0x64

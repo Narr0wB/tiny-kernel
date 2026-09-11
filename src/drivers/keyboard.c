@@ -1,13 +1,13 @@
 
-#include <arch/idt.h>
-#include <arch/drivers/ps2.h>
+#include <arch/x86/idt.h>
+#include <arch/x86/drivers/ps2.h>
 
 #include <tiny/io.h>
 #include <tiny/notifier.h>
 #include <tiny/panic.h>
 #include <tiny/mm/kmalloc.h>
 
-#include <tiny/device/keyboard.h>
+#include <tiny/drivers/keyboard.h>
 
 uint8_t key_buffer[10];
 size_t buffer_index;

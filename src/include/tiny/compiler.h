@@ -11,6 +11,36 @@
 
 #define barrier() __asm__ volatile ("" ::: "memory")
 
+static inline u8 read8(uintptr_t base, u16 offset)
+{
+    return *(volatile u8 *)(base + offset);
+}
+
+static inline u16 read16(uintptr_t base, u16 offset)
+{
+    return *(volatile u16 *)(base + offset);
+}
+
+static inline u32 read32(uintptr_t base, u16 offset)
+{
+    return *(volatile u32 *)(base + offset);
+}
+
+static inline void write8(uintptr_t base, u16 offset, u8 value)
+{
+    *(volatile u8 *)(base + offset) = value;
+}
+
+static inline void write16(uintptr_t base, u16 offset, u16 value)
+{
+    *(volatile u16 *)(base + offset) = value;
+}
+
+static inline void write32(uintptr_t base, u16 offset, u32 value)
+{
+    *(volatile u32 *)(base + offset) = value;
+}
+
 #define ilog2(n) \
     ( sizeof(n) <= 4 ? 31 - __builtin_clz(n) : 63 - __builtin_clzll(n) )
 

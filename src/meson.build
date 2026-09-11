@@ -1,7 +1,8 @@
 # Include kernel submodules
 
 subdir('arch/x86')
-subdir('device')
+subdir('drivers')
+subdir('platform')
 subdir('fs')
 subdir('kernel')
 subdir('mm')
@@ -23,7 +24,8 @@ link_modules = [
   fs,
   kernel,
   mm,
-  device
+  drivers,
+  platform
 ]
 
 # To generate a symtable, we need to:

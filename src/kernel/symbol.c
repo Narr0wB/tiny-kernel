@@ -1,7 +1,7 @@
 
 #include <tiny/symbol.h>
 #include <tiny/compiler.h>
-#include <arch/idt.h>
+#include <arch/x86/idt.h>
 
 extern struct symbol ksyms[] __weak;
 extern size_t ksyms_len __weak;

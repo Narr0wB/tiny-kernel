@@ -1,5 +1,5 @@
 
-#include <arch/mm/paging.h>
+#include <arch/x86/mm/paging.h>
 
 #include <tiny/mm/vasl.h>
 #include <tiny/io.h>
@@ -14,7 +14,7 @@ static struct bootmem_region __regions[MAX_REGIONS];
 static paddr_t kernel_image_start = (paddr_t)0;
 static paddr_t kernel_image_end = (paddr_t)0;
 
-pn_t max_pfn = 0;
+pn_t   max_pfn = 0;
 size_t allocable_pages = 0;
 
 void bootmem_init(struct bootinfo *info)

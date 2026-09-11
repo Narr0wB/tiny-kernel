@@ -2,7 +2,7 @@
 #include <tiny/tty/tty.h>
 #include <tiny/tty/font.h>
 #include <tiny/modules.h>
-#include <arch/asm.h>
+#include <arch/x86/asm.h>
 
 int TTY_MODULE = 0;
 

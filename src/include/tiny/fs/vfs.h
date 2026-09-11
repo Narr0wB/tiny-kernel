@@ -2,7 +2,7 @@
 #ifndef VFS_H
 #define VFS_H
 
-#include <arch/atomic.h>
+#include <arch/x86/atomic.h>
 
 #include <tiny/types.h>
 #include <tiny/assert.h>
@@ -10,7 +10,7 @@
 #include <tiny/errno.h>
 #include <tiny/string.h>
 #include <tiny/fs/inode.h>
-#include <tiny/device/device.h>
+#include <tiny/block/block.h>
 
 /* Superblock flags */
 #define SB_ACTIVE (1U << 0)
@@ -75,7 +75,7 @@ struct superblock {
     struct list_head       list;
     struct list_head       inodes;
     struct filesystem     *fs;
-    dev_t                  device;
+    bdev_t                 device;
     uint32_t               flags;
     struct dentry         *root;
     atomic_t               count;
@@ -205,7 +205,7 @@ static __force_inline struct inode *new_inode(struct superblock *sb)
 }
 
 
-struct mount *vfs_mount(struct filesystem *fs, dev_t dev, struct path *path);
+struct mount *vfs_mount(struct filesystem *fs, bdev_t dev, struct path *path);
 int vfs_umount(struct dentry *mountpoint);
 struct mount *vfs_lookup_mount(struct dentry *mountpoint);
 

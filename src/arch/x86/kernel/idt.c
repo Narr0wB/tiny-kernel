@@ -1,13 +1,13 @@
 
-#include <arch/gdt.h>
-#include <arch/irq.h>
-#include <arch/drivers/pic.h>
-#include <arch/asm.h>
-#include <arch/backtrace.h>
+#include <arch/x86/gdt.h>
+#include <arch/x86/irq.h>
+#include <arch/x86/drivers/pic.h>
+#include <arch/x86/asm.h>
+#include <arch/x86/backtrace.h>
 
 #include <tiny/io.h>
 
-#include <arch/idt.h>
+#include <arch/x86/idt.h>
 
 static struct idt_entry idt[256] = {0};
 static struct idt_info  info[256] = {0};

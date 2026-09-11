@@ -2,7 +2,7 @@
 #ifndef PALLOC_H
 #define PALLOC_H
 
-#include <arch/atomic.h>
+#include <arch/x86/atomic.h>
 #include <tiny/types.h>
 #include <tiny/list.h>
 #include <tiny/mm/types.h>

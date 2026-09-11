@@ -4,7 +4,7 @@
 
 #include <tiny/types.h>
 #include <tiny/lib.h>
-#include <arch/asm.h>
+#include <arch/x86/asm.h>
 
 int init_serial();
 

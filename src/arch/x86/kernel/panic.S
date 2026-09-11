@@ -1,5 +1,5 @@
 
-#include <arch/registers.h>
+#include <arch/x86/registers.h>
 
 .extern __panic
 .global panic

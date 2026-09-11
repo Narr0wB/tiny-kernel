@@ -17,7 +17,7 @@ static u32 ramfs_get_next_ino()
     return ramfs_monotonic_count++;
 }
 
-static struct inode *ramfs_get_inode(struct superblock *sb, struct inode *dir, mode_t mode, dev_t dev)
+static struct inode *ramfs_get_inode(struct superblock *sb, struct inode *dir, mode_t mode, bdev_t dev)
 {
     (void)dir;
 

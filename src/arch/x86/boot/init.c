@@ -1,8 +1,8 @@
 
-#include <arch/cpu.h>
-#include <arch/idt.h>
-#include <arch/drivers/pic.h>
-#include <arch/mm/paging.h>
+#include <arch/x86/cpu.h>
+#include <arch/x86/idt.h>
+#include <arch/x86/drivers/pic.h>
+#include <arch/x86/mm/paging.h>
 
 #include <tiny/boot/boot.h>
 #include <tiny/boot/efi.h>
@@ -14,11 +14,12 @@
 #include <tiny/mm/vasl.h>
 #include <tiny/mm/bootmem.h>
 #include <tiny/mm/kmalloc.h>
-#include <tiny/device/device.h>
 #include <tiny/panic.h>
 #include <tiny/fs/vfs.h>
 #include <tiny/fs/ramfs.h>
 #include <tiny/fs/namei.h>
+#include <tiny/platform/acpi.h>
+#include <tiny/platform/pci.h>
 
 void clean_efi_memory_map(struct efi_memory_map *mmap) 
 {
@@ -87,18 +88,14 @@ __attribute__((aligned(4096))) int _kentry(struct bootinfo *init_data) {
     struct memory_info info = {0};
     bootmem_get_memory_info(&info);
 
-    kprintf(KERN_DEBUG, "%p"EOL, init_data->framebuffer.base_addr);
-
     init_paging(&info);
     init_palloc(&info);
-
     cpu_setup_main_core();
-
     init_video(&init_data->framebuffer);
     init_tty();
-    init_device();
+    init_acpi(init_data->rsdp);
+    init_pci();
 
-    kprintf(KERN_DEBUG, "starting vfs"EOL);
 
     init_vfs();
     init_ramfs();

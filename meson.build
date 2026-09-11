@@ -19,7 +19,7 @@ c_flags = [
 
 add_project_arguments(c_flags, language: 'c')
 
-kernel_include = include_directories('src/include', 'src/arch/x86/include')
+kernel_include = include_directories('src/include', 'src/arch/include')
 boot_include = include_directories('uefi-bootloader/include') 
 
 arch_x86 = meson.source_root() / 'src/arch/x86'

@@ -2,7 +2,7 @@
 #ifndef ARCH_X86_CPU_H
 #define ARCH_X86_CPU_H
 
-#include <arch/gdt.h>
+#include <arch/x86/gdt.h>
 #include <tiny/compiler.h>
 
 #define CR4_PGE 1 << 7

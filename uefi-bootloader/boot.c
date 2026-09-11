@@ -7,9 +7,10 @@
 #include "efidef.h"
 #include <tiny/boot/boot.h>
 #include <tiny/mm/vasl.h>
-#include <arch/mm/paging.h>
+#include <arch/x86/mm/paging.h>
 
-EFI_STATUS EFIAPI Halt() {
+EFI_STATUS EFIAPI Halt() 
+{
     UINTN event_index;
     EFI_STATUS status = uefi_call_wrapper(BS->WaitForEvent, 3, 1, &ST->ConIn->WaitForKey, &event_index);
     return status;
@@ -25,21 +26,6 @@ EFI_STATUS EFIAPI Halt() {
             Halt();                                                         \
         }                                                                   \
     } while (0)
-
-// int EFIAPI memcmp(
-//     const void *buf1, 
-//     const void *buf2, 
-//     size_t count
-// ) {
-//     if (!count) return 0;
-
-//     while (--count && *(unsigned char*)buf1 == *(unsigned char*)buf2) {
-//         buf1 = ((unsigned char*)buf1 + 1);
-//         buf2 = ((unsigned char*)buf2 + 1);
-//     }
-
-//     return *(unsigned char*)buf1 - *(unsigned char*)buf2;
-// }
 
 EFI_STATUS EFIAPI InitializeGraphics(
     OUT struct framebuffer *framebuffer
@@ -77,6 +63,19 @@ EFI_STATUS EFIAPI LoadFile(
     EFI_ERR(uefi_call_wrapper(Directory->Open, 5, Directory, File, FilePath, EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY));
 
     return EFI_SUCCESS;
+}
+
+pn_t EFIAPI find_max_pfn(struct efi_memory_map mmap)
+{
+    pn_t max_pfn = 0;
+
+    for (UINTN i = 0; i < mmap.size; ++i) {
+        efi_memory_descriptor *desc = &mmap.map[i];
+        pn_t section_end = SIZE_TO_PAGES(desc->phys_start) + npages;
+        if (section_end > max_pfn) max_pfn = section_end
+    }
+
+    return max_pfn;
 }
 
 EFI_STATUS EFIAPI efi_main(
@@ -177,13 +176,13 @@ EFI_STATUS EFIAPI efi_main(
         } 
     }
 
-    struct bootinfo *BootInfo = (struct bootinfo *)kernel_image_end;
+    struct bootinfo *boot_info = (struct bootinfo *)kernel_image_end;
     UINTN bootinfo_pages = SIZE_TO_PAGES(sizeof(struct bootinfo));
-    EFI_ERR(uefi_call_wrapper(BS->AllocatePages, 4, AllocateAddress, EfiLoaderData, bootinfo_pages, (EFI_PHYSICAL_ADDRESS*)&BootInfo));
-    paddr_t bootinfo_start = (paddr_t)BootInfo;
+    EFI_ERR(uefi_call_wrapper(BS->AllocatePages, 4, AllocateAddress, EfiLoaderData, bootinfo_pages, (EFI_PHYSICAL_ADDRESS*)&boot_info));
+    paddr_t bootinfo_start = (paddr_t)boot_info;
     paddr_t bootinfo_end   = bootinfo_start + (paddr_t)(bootinfo_pages * PAGE_SIZE);
 
-    struct framebuffer *framebuffer = &BootInfo->framebuffer;
+    struct framebuffer *framebuffer = &boot_info->framebuffer;
     EFI_ERR(InitializeGraphics(framebuffer));
 
     EFI_MEMORY_DESCRIPTOR *MemoryMap = (EFI_MEMORY_DESCRIPTOR*)bootinfo_end;
@@ -198,9 +197,21 @@ EFI_STATUS EFIAPI efi_main(
         Halt();
     }
 
-    // Pad memory map size for safety
-    MemoryMapSize += 2 * DescriptorSize;
+    /* Padding */
+    MemoryMapSize += 1 * DescriptorSize;
     UINTN mmap_pages = SIZE_TO_PAGES(MemoryMapSize);
+
+    EFI_GUID acpi20_guid = ACPI_20_TABLE_GUID;
+    paddr_t rsdp         = 0;
+
+    for (UINTN i = 0; i < SystemTable->NumberOfTableEntries; ++i) {
+        EFI_CONFIGURATION_TABLE *table = &SystemTable->ConfigurationTable[i];
+
+        if (CompareGuid(&table->VendorGuid, &acpi20_guid) == 0) {
+            rsdp = (paddr_t)table->VendorTable;
+            break;
+        }
+    }
 
     EFI_ERR(uefi_call_wrapper(BS->AllocatePages, 4, AllocateAddress, EfiLoaderData, mmap_pages, (EFI_PHYSICAL_ADDRESS*)&MemoryMap));
     ZeroMem(MemoryMap, MemoryMapSize);
@@ -215,14 +226,16 @@ EFI_STATUS EFIAPI efi_main(
     mmap.map[mmap.size - 1].npages     = SIZE_TO_PAGES(framebuffer->size);
     mmap.map[mmap.size - 1].attribute  = EFI_MEMORY_UC;
 
-    BootInfo->map                   = mmap;
-    BootInfo->kernel_image_start    = kernel_image_start;
-    BootInfo->kernel_image_end      = kernel_image_end;
+    boot_info->max_pfn            = find_max_pfn(mmap);
+    boot_info->map                = mmap;
+    boot_info->kernel_image_start = kernel_image_start;
+    boot_info->kernel_image_end   = kernel_image_end;
+    boot_info->rsdp               = rsdp;
 
     EFI_ERR(uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, MemoryMapKey));
 
     int (*_kernel_entry)(struct bootinfo *) = ( (__attribute__((sysv_abi)) int(*)(struct bootinfo *)) (v_to_p(header.e_entry)) );
-    int code = _kernel_entry((struct bootinfo*)p_to_v((paddr_t)BootInfo));
+    int code = _kernel_entry((struct bootinfo*)p_to_v((paddr_t)boot_info));
 
     __builtin_unreachable();
     

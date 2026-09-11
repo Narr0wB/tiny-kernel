@@ -1,5 +1,5 @@
 
-#include <arch/mm/paging.h>
+#include <arch/x86/mm/paging.h>
 #include <tiny/mm/palloc.h>
 #include <tiny/kernel.h>
 #include <tiny/io.h>

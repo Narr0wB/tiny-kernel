@@ -1,5 +1,5 @@
 
-#include <arch/backtrace.h>
+#include <arch/x86/backtrace.h>
 #include <tiny/io.h>
 #include <tiny/symbol.h>
 

@@ -1,6 +1,6 @@
 
-#include <arch/cpu.h>
-#include <arch/mm/paging.h>
+#include <arch/x86/cpu.h>
+#include <arch/x86/mm/paging.h>
 
 // CPU struct for CPU0
 static struct cpu_info cpu0;

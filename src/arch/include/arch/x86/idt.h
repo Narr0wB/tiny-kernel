@@ -5,8 +5,8 @@
 #include <tiny/types.h>
 #include <tiny/compiler.h>
 #include <tiny/list.h>
-#include <arch/irq.h>
-#include <arch/atomic.h>
+#include <arch/x86/irq.h>
+#include <arch/x86/atomic.h>
 
 struct idt_entry {
     uint16_t offset_low;

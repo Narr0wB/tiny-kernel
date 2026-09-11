@@ -1,6 +1,6 @@
 
-#include <arch/gdt.h>
-#include <arch/mm/paging.h>
+#include <arch/x86/gdt.h>
+#include <arch/x86/mm/paging.h>
 #include <tiny/mm/vasl.h> 
 
 .section .data
@@ -14,14 +14,16 @@ stack_top:
 
 # Set up the initial page map level 4
 .align 0x1000
-initial_pgd:
+pgd:
     .fill 512, 8, 0
 
 # We are going to map the first 8M of phys memory to:
-#    1) Itself (identity)
+#    1) Identity
 #    2) VASL_KERNEL_BASE
-.set pgdID,   initial_pgd
-.set pgdHIGH, initial_pgd + PGD_INDEX(VASL_KERNEL_BASE) * 8
+# We are going to map the first 8M of phys memory to itself, and then 
+# we are going to map the entire physical memory space at VASL_KERNEL_BASE
+.set pgdID,   pgd 
+.set pgdHIGH, pgd + PGD_INDEX(VASL_KERNEL_BASE) * 8
 
 .align 0x1000
 pud:
@@ -83,7 +85,7 @@ _start:
     dec %rcx
     jnz .pd_insert_loop
 
-    movq $V2P(initial_pgd), %rax
+    movq $V2P(pgd), %rax
     movq %rax, %cr3
 
     movabsq $higher_half, %rax

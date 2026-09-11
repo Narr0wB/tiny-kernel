@@ -214,13 +214,6 @@ struct fat_dirent {
     u32 file_size;
 } __packed;
 
-struct fat_superblock_data {
-    u64 fat_start_sector[4]; /* Up to four distinct FATs */
-    u64 data_start_sector;
-    u64 data_sector_count;
-    u64 cluster_count;
-};
-
 struct fat_inode {
     u32          first_cluster;
     u32          attributes;
@@ -249,5 +242,7 @@ static __force_inline u32 fat32_entry(u8* fat, u32 cluster)
     size_t index = cluster - 2;
     return ((u32*)fat)[index] & FAT32_ENTRY_MASK;
 }
+
+void init_fat();
 
 #endif // FAT_H

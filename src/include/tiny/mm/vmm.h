@@ -2,9 +2,7 @@
 #ifndef VMM_H
 #define VMM_H
 
-#ifdef ARCH_x86
 #include <arch/x86/mm/paging.h>
-#endif 
 
 #include <tiny/types.h>
 #include <tiny/list.h>

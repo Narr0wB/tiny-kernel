@@ -70,9 +70,9 @@ pn_t EFIAPI find_max_pfn(struct efi_memory_map mmap)
     pn_t max_pfn = 0;
 
     for (UINTN i = 0; i < mmap.size; ++i) {
-        efi_memory_descriptor *desc = &mmap.map[i];
-        pn_t section_end = SIZE_TO_PAGES(desc->phys_start) + npages;
-        if (section_end > max_pfn) max_pfn = section_end
+        struct efi_memory_descriptor *desc = &mmap.map[i];
+        pn_t section_end = SIZE_TO_PAGES(desc->phys_start) + desc->npages;
+        if (section_end > max_pfn) max_pfn = section_end;
     }
 
     return max_pfn;
@@ -216,6 +216,7 @@ EFI_STATUS EFIAPI efi_main(
     EFI_ERR(uefi_call_wrapper(BS->AllocatePages, 4, AllocateAddress, EfiLoaderData, mmap_pages, (EFI_PHYSICAL_ADDRESS*)&MemoryMap));
     ZeroMem(MemoryMap, MemoryMapSize);
     EFI_ERR(uefi_call_wrapper(BS->GetMemoryMap, 5, &MemoryMapSize, MemoryMap, &MemoryMapKey, &DescriptorSize, &DescriptorVersion));
+
     struct efi_memory_map mmap = {
         .map = (struct efi_memory_descriptor *)MemoryMap, 
         .size = (MemoryMapSize/DescriptorSize) + 1
@@ -226,7 +227,7 @@ EFI_STATUS EFIAPI efi_main(
     mmap.map[mmap.size - 1].npages     = SIZE_TO_PAGES(framebuffer->size);
     mmap.map[mmap.size - 1].attribute  = EFI_MEMORY_UC;
 
-    boot_info->max_pfn            = find_max_pfn(mmap);
+    // boot_info->max_pfn            = find_max_pfn(mmap);
     boot_info->map                = mmap;
     boot_info->kernel_image_start = kernel_image_start;
     boot_info->kernel_image_end   = kernel_image_end;

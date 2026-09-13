@@ -37,7 +37,7 @@ void init_pci()
     for (u32 i = 0; i < mcfg_count; ++i) {
         struct mcfg_entry *entry = &mcfg->entries[i];
 
-        for (u32 bus = entry->start_pci_bus; bus < entry->end_pci_bus; ++bus) {
+        for (u32 bus = entry->start_pci_bus; bus <= entry->end_pci_bus; ++bus) {
             for (u32 dev = 0; dev < PCI_MAX_DEVICES; ++dev) {
                 for (u32 func = 0; func < PCI_MAX_FUNCTIONS; ++func) {
                     uintptr_t ecam_register = p_to_v(pci_ecam_reg(entry->base_address, bus, dev, func));

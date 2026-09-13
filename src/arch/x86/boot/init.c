@@ -20,6 +20,7 @@
 #include <tiny/fs/namei.h>
 #include <tiny/platform/acpi.h>
 #include <tiny/platform/pci.h>
+#include <tiny/platform/ahci.h>
 
 void clean_efi_memory_map(struct efi_memory_map *mmap) 
 {
@@ -95,6 +96,7 @@ __attribute__((aligned(4096))) int _kentry(struct bootinfo *init_data) {
     init_tty();
     init_acpi(init_data->rsdp);
     init_pci();
+    init_ahci();
 
 
     init_vfs();

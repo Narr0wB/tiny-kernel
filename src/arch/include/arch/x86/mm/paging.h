@@ -2,8 +2,6 @@
 #ifndef ARCH_X86_PAGING_H
 #define ARCH_X86_PAGING_H
 
-#define INIT_LARGE_PAGE_COUNT      8
-
 #define ALIGN_UP(x, a)             ((typeof(x))(((unsigned long)(x) + (a) - 1) & ~(a - 1)))
 #define ALIGN_DOWN(x, a)           ((typeof(x))(((unsigned long)(x)) & ~(a - 1)))
 #define ALIGNED(x, a)              ((int)!(x & (a - 1)))
@@ -21,13 +19,13 @@
 #define PAGE_ALIGN_UP(addr)         ALIGN_UP(addr, PAGE_SIZE) 
 #define PAGE_ALIGN_DOWN(addr)       ALIGN_DOWN(addr, PAGE_SIZE) 
 #define PAGE_ALIGN(addr)            PAGE_ALIGN_UP(addr)
-#define PHYS_ADDR_MASK              0xFFFFFFFFFFFFF000
+#define PHYS_ADDR_MASK              0x000FFFFFFFFFF000
 
-#define PAGE_FLAG_PRESENT           1 << 0
-#define PAGE_FLAG_READWRITE         1 << 1
-#define PAGE_FLAG_USER              1 << 2
-#define PAGE_FLAG_PAGESIZE          1 << 7
-#define PAGE_FLAG_GLOBAL            1 << 8
+#define PAGE_FLAG_PRESENT           (1 << 0)
+#define PAGE_FLAG_READWRITE         (1 << 1)
+#define PAGE_FLAG_USER              (1 << 2)
+#define PAGE_FLAG_PAGESIZE          (1 << 7)
+#define PAGE_FLAG_GLOBAL            (1 << 8)
 
 #define PGD_INDEX(x)                (((x) >> 39) & 511)
 #define PUD_INDEX(x)                (((x) >> 30) & 511)
@@ -60,7 +58,12 @@ typedef int (*vm_pt_alloc_t)(struct vm_pt_page *page, void *ctx);
 
 void init_paging(struct memory_info *info);
 
-void vm_map(pgd_t *pgd, paddr_t phys, vaddr_t virt, size_t size, u64 flags, vm_pt_alloc_t allocator);
+/* Map new, page-aligned ranges in four-level page tables. Existing mappings
+ * are rejected. On failure no leaves are installed; empty tables may remain.
+ * Allocator pages must be aligned and accessible through the direct map.
+ * Caller serializes updates and handles any required TLB synchronization.
+ */
+int vm_map(pgd_t *pgd, paddr_t phys, vaddr_t virt, size_t size, u64 flags, vm_pt_alloc_t allocator);
 
 #endif // __ASSEMBLER__
 

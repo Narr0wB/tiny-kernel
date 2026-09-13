@@ -3,6 +3,8 @@
 #include <arch/x86/mm/paging.h>
 #include <tiny/mm/vasl.h> 
 
+#define INIT_LARGE_PAGE_COUNT 512
+
 .section .data
 
 # Set up temporary kernel stack
@@ -20,17 +22,17 @@ pgd:
 # We are going to map the first 8M of phys memory to:
 #    1) Identity
 #    2) VASL_KERNEL_BASE
-# We are going to map the first 8M of phys memory to itself, and then 
-# we are going to map the entire physical memory space at VASL_KERNEL_BASE
+# We are going to map the first 8M of phys memory to itself, and then map the entire physical memory space at VASL_KERNEL_BASE
+
 .set pgdID,   pgd 
 .set pgdHIGH, pgd + PGD_INDEX(VASL_KERNEL_BASE) * 8
 
 .align 0x1000
-pud:
+gpud:
     .fill 512, 8, 0
 
 .align 0x1000
-pmd:
+tpud:
     .fill 512, 8, 0
 
 # Create temporary GDT
@@ -61,29 +63,27 @@ _start:
     movabsq $V2P(pgdID), %rax 
     movabsq $V2P(pgdHIGH), %rbx 
 
-    # Insert in pml4 entries 0 and 511 the address of PDPT (that they will share)
-    movq $V2P(pud), (%rax)
+    # Insert in pgd entries 0 and 511 the address of pud (that they will share)
+    movq $V2P(tpud), (%rax)
     orq $(PAGE_FLAG_PRESENT | PAGE_FLAG_READWRITE), (%rax)
-    movq $V2P(pud), (%rbx)
+    movq $V2P(gpud), (%rbx)
     orq $(PAGE_FLAG_PRESENT | PAGE_FLAG_READWRITE), (%rbx)
 
-    # Insert in PDPT entry n the address of PDT (that pml4 entries 0 and 511 will share again)
-    movq $V2P(pud), %rax 
-    movq $V2P(pmd), (%rax)
-    orq $(PAGE_FLAG_PRESENT | PAGE_FLAG_READWRITE), (%rax)
+    movq $V2P(tpud), %rax 
+    movq $V2P(gpud), %rbx 
+    movq $0, %rcx
+    movq $INIT_LARGE_PAGE_COUNT, %rdx
 
-    # Insert in PDT the addresses of PT0, PT1, PT2, PT3
-    movq $V2P(pmd), %rax
-    movq $0, %rbx
-    movq $INIT_LARGE_PAGE_COUNT, %rcx
-
-.pd_insert_loop:
-    movq %rbx, (%rax) 
-    orq $(PAGE_FLAG_PRESENT | PAGE_FLAG_READWRITE | PAGE_FLAG_PAGESIZE), (%rax) # The flag PAGE_FLAG_PAGESIZE allows us to use PMD entries as huge (2MiB) page entries
-    addq $0x200000, %rbx
+.insert_loop:
+    movq %rcx, (%rax)
+    movq %rcx, (%rbx)
+    orq $(PAGE_FLAG_PRESENT | PAGE_FLAG_READWRITE | PAGE_FLAG_PAGESIZE), (%rax)
+    orq $(PAGE_FLAG_PRESENT | PAGE_FLAG_READWRITE | PAGE_FLAG_PAGESIZE | PAGE_FLAG_GLOBAL), (%rbx)
+    addq $PAGE_SIZE_1G, %rcx
     addq $8, %rax
-    dec %rcx
-    jnz .pd_insert_loop
+    addq $8, %rbx
+    dec %rdx
+    jnz .insert_loop
 
     movq $V2P(pgd), %rax
     movq %rax, %cr3

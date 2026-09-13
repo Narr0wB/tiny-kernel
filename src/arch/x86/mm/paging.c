@@ -10,11 +10,9 @@
 #include <tiny/mm/vasl.h>
 #include <tiny/compiler.h>
 #include <tiny/io.h>
+#include <tiny/errno.h>
 
 #include <arch/x86/mm/paging.h>
-
-__align(0x1000) pgd_t kpgd = {0};
-__align(0x1000) pud_t kpud = {0};
 
 static void page_fault_handler(struct irq_frame *frame, void *data) 
 {
@@ -25,28 +23,10 @@ static void page_fault_handler(struct irq_frame *frame, void *data)
     while (1)
         hlt();
 }
+
+
 static struct irq_handler pgft_handler = IRQ_HANDLER_INIT("Page fault handler", page_fault_handler, NULL, 0, pgft_handler);
 
-void create_kernel_pagetable(struct memory_info *info)
-{
-    int pgd_index = PGD_INDEX(VASL_VIRTUAL_BASE);
-    kpgd.entry[pgd_index] = (v_to_p(&kpud) | PAGE_FLAG_PRESENT | PAGE_FLAG_GLOBAL | PAGE_FLAG_READWRITE);
-
-    pmd_t *curr_pmd = NULL;
-    for (pn_t pfn = 0; pfn < ALIGN_UP(info->max_pfn, 512); pfn += 512) {
-        paddr_t phys_addr = pn_to_paddr(pfn);
-        vaddr_t virt_addr = P2V(phys_addr);
-
-        int pud_index = PUD_INDEX(virt_addr);
-        if (kpud.entry[pud_index] == 0) {
-            curr_pmd = bootmem_alloc(PAGE_SIZE, PAGE_ALIGNMENT);
-            kpud.entry[pud_index] = (v_to_p(curr_pmd) | PAGE_FLAG_PRESENT | PAGE_FLAG_GLOBAL | PAGE_FLAG_READWRITE);
-        } 
-
-        int pmd_index = PMD_INDEX(virt_addr);
-        curr_pmd->entry[pmd_index] = (PAGE_ALIGN(phys_addr) | PAGE_FLAG_PRESENT | PAGE_FLAG_GLOBAL | PAGE_FLAG_PAGESIZE | PAGE_FLAG_READWRITE);
-    }
-}
 
 void init_paging(struct memory_info *info)
 {
@@ -56,64 +36,97 @@ void init_paging(struct memory_info *info)
     cpu_set_cr4(cr4);
 
     kprintf(KERN_INFO, "Setting up the main kernel pagetable with global pages enabled...\n");
-    create_kernel_pagetable(info);
 
     /* 
      * Since exception no. 14 is the only CPU exception that we dont handle with the default 
      * unhandled_cpu_exception(), register our own page fault handler
      */
     register_irq_handler(14, &pgft_handler);
-
-    cpu_set_cr3(v_to_p(&kpgd));
 }
 
 
-
-void vm_map(pgd_t *pgd, paddr_t phys, vaddr_t virt, size_t size, u64 flags, vm_pt_alloc_t allocator)
+int vm_map(pgd_t *pgd, paddr_t phys, vaddr_t virt, size_t size, u64 flags, vm_pt_alloc_t allocator)
 {
-    u32 huge_pages = size / PAGE_SIZE_1G;
-    u32 middle_pages = (size - huge_pages * PAGE_SIZE_1G) / PAGE_SIZE_2M;
-    u32 pages = (middle_pages - huge_pages * PAGE_SIZE_1G - middle_pages * PAGE_SIZE_2M) / PAGE_SIZE_4K;
+    if (!size)
+        return 0;
 
-    for (size_t page = 0; page < huge_pages; ++page) {
-        vaddr_t vaddr = virt + page * PAGE_SIZE_1G;
-        paddr_t paddr = phys + page * PAGE_SIZE_1G;
+    if (!pgd || !allocator || ((phys | virt | size) & (PAGE_SIZE - 1))
+        || size - 1 > UINT64_MAX - virt
+        || phys > (PHYS_ADDR_MASK | (PAGE_SIZE - 1))
+        || size - 1 > (PHYS_ADDR_MASK | (PAGE_SIZE - 1)) - phys
+        || (flags & ~((u64)PAGE_FLAG_PRESENT | PAGE_FLAG_READWRITE
+                      | PAGE_FLAG_USER | PAGE_FLAG_GLOBAL | PAGE_FLAG_PAGESIZE | 0x18)))
+        return -EINVAL;
 
-        u32 pgd_index = PGD_INDEX(vaddr);
-        pud_t *pud = pgd->entry[pgd_index] & PAGE_MASK;
+    /* Four-level paging: the whole range must stay in one canonical half. */
+    u64 half = virt >> 47;
+    if ((half != 0 && half != 0x1ffff) || ((virt + size - 1) >> 47) != half)
+        return -EINVAL;
 
-        if (!pud) {
-            struct vm_pt_page pg;
-            allocator(&pg, NULL);
-            pgd->entry[pgd_index] = pud = pg.phys & PAGE_MASK;
+    flags = (flags & ~(u64)PAGE_FLAG_PAGESIZE) | PAGE_FLAG_PRESENT;
+
+    /* Pass 1: allocate tables and validate the entire range. */
+    paddr_t pa = phys;
+    vaddr_t va = virt;
+    size_t remaining = size;
+    while (remaining) {
+        struct page_table *table = pgd;
+        for (int shift = 39; shift >= 12; shift -= 9) {
+            u64 *entry = &table->entry[(va >> shift) & 511];
+            size_t span = 1ULL << shift;
+            bool leaf = shift == 12
+                || ((shift == 21 || shift == 30)
+                    && !((pa | va) & (span - 1)) && remaining >= span && !*entry);
+            if (leaf) {
+                if (*entry)
+                    return -EEXIST;
+                pa += span;
+                va += span;
+                remaining -= span;
+                break;
+            }
+
+            if (*entry) {
+                if (!(*entry & PAGE_FLAG_PRESENT) || (*entry & PAGE_FLAG_PAGESIZE))
+                    return -EEXIST;
+                u64 permissions = flags & (PAGE_FLAG_READWRITE | PAGE_FLAG_USER);
+                if ((*entry & permissions) != permissions || (*entry & (1ULL << 63)))
+                    return -EINVAL;
+                table = (struct page_table *)p_to_v(*entry & PHYS_ADDR_MASK);
+            } else {
+                struct vm_pt_page page;
+                int err = allocator(&page, NULL);
+                if (err)
+                    return err;
+                table = page.virt;
+                for (size_t i = 0; i < 512; ++i)
+                    table->entry[i] = 0;
+                *entry = page.phys | PAGE_FLAG_PRESENT | PAGE_FLAG_READWRITE | PAGE_FLAG_USER;
+            }
         }
-
-        u32 pud_index = PUD_INDEX(vaddr);
-        pud->entry[pud_index] = (paddr & PAGE_MASK) | (flags & ~PAGE_MASK);
     }
 
-    for (size_t page = 0; page < middle_pages; ++page) {
-        vaddr_t vaddr = virt + page * PAGE_SIZE_2M;
-
-        u32 pgd_index = PGD_INDEX(vaddr);
-        pud_t *pud = pgd->entry[pgd_index] & PAGE_MASK;
-
-        if (!pud) {
-            struct vm_pt_page pg;
-            allocator(&pg, NULL);
-            pgd->entry[pgd_index] = pud = pg.phys & PAGE_MASK;
+    /* Pass 2: install leaves; all required tables now exist. */
+    pa = phys;
+    va = virt;
+    remaining = size;
+    while (remaining) {
+        struct page_table *table = pgd;
+        for (int shift = 39; shift >= 12; shift -= 9) {
+            u64 *entry = &table->entry[(va >> shift) & 511];
+            size_t span = 1ULL << shift;
+            bool leaf = shift == 12
+                || ((shift == 21 || shift == 30)
+                    && !((pa | va) & (span - 1)) && remaining >= span && !*entry);
+            if (leaf) {
+                *entry = pa | flags | (shift == 12 ? 0 : PAGE_FLAG_PAGESIZE);
+                pa += span;
+                va += span;
+                remaining -= span;
+                break;
+            }
+            table = (struct page_table *)p_to_v(*entry & PHYS_ADDR_MASK);
         }
-
-        u32 pud_index = PUD_INDEX(vaddr);
-        u32 pmd_index = PMD_INDEX(vaddr);
     }
-
-    for (size_t page = 0; page < pages; ++page) {
-        vaddr_t vaddr = virt + page * PAGE_SIZE_4K;
-
-        u32 pgd_index = PGD_INDEX(vaddr);
-        u32 pud_index = PUD_INDEX(vaddr);
-        u32 pmd_index = PMD_INDEX(vaddr);
-        u32 pd_index  = PD_INDEX(vaddr);
-    }
+    return 0;
 }

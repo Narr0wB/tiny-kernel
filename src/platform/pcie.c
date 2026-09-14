@@ -14,9 +14,9 @@ LIST_HEAD(pci_devices);
 static volatile paddr_t pci_ecam_reg(paddr_t base, u8 bus, u8 dev, u8 func)
 {
     paddr_t res = base
-        + (bus  & 0xFF) << 20
-        + (dev  & 0x1F) << 15
-        + (func & 0x7)  << 8;
+        + ((bus  & 0xFF) << 20)
+        + ((dev  & 0x1F) << 15)
+        + ((func & 0x7)  << 8);
     return (volatile paddr_t)res;
 }
 
@@ -33,7 +33,7 @@ void init_pci()
     if (!mcfg)
         return;
     
-    size_t mcfg_count = (mcfg->header.length - sizeof(struct acpi_sdt_header) - 8) / sizeof(paddr_t);
+    size_t mcfg_count = (mcfg->header.length - sizeof(struct acpi_sdt_header) - 8) / sizeof(struct mcfg_entry);
     for (u32 i = 0; i < mcfg_count; ++i) {
         struct mcfg_entry *entry = &mcfg->entries[i];
 

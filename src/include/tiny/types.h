@@ -6,6 +6,9 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#define get_bit(v, n) ((v >> n) & 1)
+#define set_bit(v, n) ((v) |= (1 << n))
+#define clr_bit(v, n) ((v) &= ~(1 << n))
 
 typedef struct {
     uint64_t r15;

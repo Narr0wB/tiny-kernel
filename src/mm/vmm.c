@@ -7,6 +7,10 @@
 
 #include <tiny/mm/vmm.h>
 
+extern pgd_t pgd;
+struct vm_space kernel_space;
+
+
 int vm_page_alloc(struct vm_pt_page *pg, void *ctx)
 {
     struct page *page = palloc(0, PALLOC_ZERO);
@@ -18,6 +22,7 @@ int vm_page_alloc(struct vm_pt_page *pg, void *ctx)
 
     return 0;
 }
+
 
 struct vm_area *vmap(struct vm_space *space, paddr_t phys, vaddr_t virt, size_t size, u64 flags)
 {
@@ -37,4 +42,11 @@ struct vm_area *vmap(struct vm_space *space, paddr_t phys, vaddr_t virt, size_t 
 
     list_add(&area->list, &space->areas);
     return area;
+}
+
+
+void init_vmm()
+{
+    kernel_space.pgd = &pgd;
+    list_head_init(&kernel_space.areas);
 }

@@ -5,10 +5,6 @@
 #include <tiny/types.h>
 #include <tiny/compiler.h>
 
-#define get_bit(v, n) ((v >> n) & 1)
-#define set_bit(v, n) ((v) |= (1 << n))
-#define clr_bit(v, n) ((v) &= ~(1 << n))
-
 static __force_inline void cli() 
 {
     __asm__ volatile ("cli");

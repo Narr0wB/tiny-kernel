@@ -361,7 +361,7 @@ int sprintf(char *buffer, const char *fmt, ...) {
                     }
 
                     case 'u': {
-                        int64_t n = 0;
+                        uint64_t n = 0;
                         switch (len) {
                             case PRINTF_LENGTH_HALF_HALF:
                                 n = va_arg(args, uint32_t);
@@ -383,7 +383,7 @@ int sprintf(char *buffer, const char *fmt, ...) {
                     case 'p':
                     case 'X':
                     case 'x': {
-                        int64_t n = 0;
+                        uint64_t n = 0;
                         switch (len) {
                             case PRINTF_LENGTH_HALF_HALF:
                                 n = va_arg(args, uint32_t);
@@ -403,7 +403,7 @@ int sprintf(char *buffer, const char *fmt, ...) {
                     }
 
                     case 'o': {
-                        int64_t n = 0;
+                        uint64_t n = 0;
                         switch (len) {
                             case PRINTF_LENGTH_HALF_HALF:
                                 n = va_arg(args, uint32_t);

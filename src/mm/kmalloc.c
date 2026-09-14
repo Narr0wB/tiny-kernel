@@ -34,6 +34,7 @@ struct slab_frame *slab_alloc_new_frame(struct slab_allocator *alloc)
             ((uint32_t *)obj_addr)[j] = SLAB_POISON;
 
         *curr_obj = (struct slab_frame_free_list *)obj_addr;
+        ((struct slab_frame_free_list *)obj_addr)->next = NULL;
     }
 
     struct slab_frame **curr_frame = &alloc->head;
@@ -128,9 +129,12 @@ void *slab_malloc(struct slab_allocator *alloc)
 
 void slab_free(struct slab_allocator *alloc, void *obj)
 {
-    for (struct slab_frame *frame = alloc->head; frame; frame = frame->next)
-        if (obj >= frame->start_addr && obj < frame->end_addr)
+    for (struct slab_frame *frame = alloc->head; frame; frame = frame->next) {
+        if (obj >= frame->start_addr && obj < frame->end_addr) {
             slab_free_obj(alloc, frame, obj);
+            return;
+        }
+    }
 }
 
 void slab_clear(struct slab_allocator *alloc)

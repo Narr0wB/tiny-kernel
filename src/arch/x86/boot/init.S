@@ -19,10 +19,7 @@ stack_top:
 pgd:
     .fill 512, 8, 0
 
-# We are going to map the first 8M of phys memory to:
-#    1) Identity
-#    2) VASL_KERNEL_BASE
-# We are going to map the first 8M of phys memory to itself, and then map the entire physical memory space at VASL_KERNEL_BASE
+.global pgd 
 
 .set pgdID,   pgd 
 .set pgdHIGH, pgd + PGD_INDEX(VASL_KERNEL_BASE) * 8
@@ -50,6 +47,7 @@ tmp_gdt_descriptor:
 .section .text
 
 .global _start
+
 .extern _kentry
 
 _start:

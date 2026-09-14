@@ -11,13 +11,19 @@ case "$(uname -s)" in
 esac
 
 qemu_args=(
+    -machine q35
     -m 2G
     -cpu qemu64
     -d int
     -no-shutdown -no-reboot
+    -snapshot
     -drive if=pflash,file=emulator/uefi-firmware/OVMF_CODE.fd,format=raw,unit=0,readonly=on
     -drive if=pflash,file=emulator/uefi-firmware/OVMF_VARS.fd,format=raw,unit=1
     -drive file=$OUTDIR/$OSNAME.img,if=ide,format=raw
+
+    -device ich9-ahci,id=ahci
+    -drive id=sata0,file=bin/testdisk.img,format=raw,if=none
+    -device ide-hd,drive=sata0,bus=ahci.0
 )
 
 if [ "$1" = "--debug" ] || [ "$1" = "-d" ]; then 

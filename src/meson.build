@@ -6,6 +6,7 @@ subdir('platform')
 subdir('fs')
 subdir('kernel')
 subdir('mm')
+subdir('block')
 
 link_script = meson.source_root() / 'src' / 'arch' / 'x86' / 'kernel.ld'
 ksymtable_script = meson.source_root() / 'scripts' / 'ksymtable.py' 
@@ -25,7 +26,8 @@ link_modules = [
   kernel,
   mm,
   drivers,
-  platform
+  platform,
+  block
 ]
 
 # To generate a symtable, we need to:

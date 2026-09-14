@@ -1,6 +1,7 @@
 
 #include <arch/x86/cpu.h>
 #include <arch/x86/idt.h>
+#include <arch/x86/timer.h>
 #include <arch/x86/drivers/pic.h>
 #include <arch/x86/mm/paging.h>
 
@@ -69,28 +70,22 @@ __attribute__((aligned(4096))) int _kentry(struct bootinfo *init_data) {
     init_serial();
     init_idt();
     init_pic();
+    init_timer();
 
     kprintf(KERN_INFO, "Initializing memory...\n");
     kprintf(KERN_INFO, "Kernel loaded at (paddr) %p - (paddr) %p\n", init_data->kernel_image_start, init_data->kernel_image_end);
 
     clean_efi_memory_map(&init_data->map);
-    print_efi_memory_map(&init_data->map);
+    // print_efi_memory_map(&init_data->map);
 
-    bootmem_init(init_data);
-
-    for (size_t i = 0; i < init_data->map.size; ++i) {
-        struct efi_memory_descriptor *desc = &(init_data->map.map[i]);
-        switch (desc->type) {
-            case EFI_CONVENTIONAL_MEMORY: bootmem_insert_region(desc->phys_start, desc->phys_start + desc->npages * PAGE_SIZE, REGION_TYPE_RAM); break;
-            case EFI_MEMORY_MAPPED_IO: bootmem_insert_region(desc->phys_start, desc->phys_start + desc->npages * PAGE_SIZE, REGION_TYPE_MMIO); break;
-        }
-    }
+    init_bootmem(init_data);
 
     struct memory_info info = {0};
     bootmem_get_memory_info(&info);
 
     init_paging(&info);
     init_palloc(&info);
+    init_vmm();
     cpu_setup_main_core();
     init_video(&init_data->framebuffer);
     init_tty();
@@ -98,24 +93,35 @@ __attribute__((aligned(4096))) int _kentry(struct bootinfo *init_data) {
     init_pci();
     init_ahci();
 
+    struct block_device *dev = block_find(1);
+    kprintf(KERN_DEBUG, "dev %p"EOL, dev);
+    if (dev) {
+        char buffer[512];
+        int err = block_read(dev, 0, 1, (void*)buffer);
+        if (err)
+            kprintf(KERN_ERROR, "Could not read from block device!"EOL);
+        else
+            kprintf(KERN_DEBUG, "Sata sector 0: %s"EOL, buffer);
+    }
+
 
     init_vfs();
     init_ramfs();
 
-    struct path p = {0};
-    int err = path_walk(NULL, "/tmp", &p);
+    // struct path p = {0};
+    // int err = path_walk(NULL, "/tmp", &p);
 
-    struct qstr name = QSTR("testfile");
-    struct dentry *entry = dalloc(p.dentry, &name);
-    vfs_create(p.dentry->inode, entry, 0);
+    // struct qstr name = QSTR("testfile");
+    // struct dentry *entry = dalloc(p.dentry, &name);
+    // vfs_create(p.dentry->inode, entry, 0);
 
-    kprintf(KERN_DEBUG, "Create testfile dentry %p"EOL, entry);
+    // kprintf(KERN_DEBUG, "Create testfile dentry %p"EOL, entry);
 
-    err = path_walk(NULL, "/tmp/testfile", &p);
-    struct file *f;
-    vfs_open(&p, &f, 0);
+    // err = path_walk(NULL, "/tmp/testfile", &p);
+    // struct file *f;
+    // vfs_open(&p, &f, 0);
 
-    kprintf(KERN_DEBUG, "Successfully retrieved path %i %p, dir: %i"EOL, err, p.dentry, S_ISDIR(p.dentry->inode->mode));
+    // kprintf(KERN_DEBUG, "Successfully retrieved path %i %p, dir: %i"EOL, err, p.dentry, S_ISDIR(p.dentry->inode->mode));
 
     while (1) {
         __asm__("hlt");

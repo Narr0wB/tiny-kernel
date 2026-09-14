@@ -20,6 +20,8 @@ struct vm_area {
     struct list_head list;
 };
 
+void init_vmm();
+
 struct vm_area *vmap(struct vm_space *space, paddr_t phys, vaddr_t virt, size_t size, u64 flags);
 void vunmap(struct vm_area *area);
 

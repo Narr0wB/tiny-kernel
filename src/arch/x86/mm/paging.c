@@ -14,6 +14,7 @@
 
 #include <arch/x86/mm/paging.h>
 
+
 static void page_fault_handler(struct irq_frame *frame, void *data) 
 {
     paddr_t cr2 = cpu_get_cr2();
@@ -36,6 +37,7 @@ void init_paging(struct memory_info *info)
     cpu_set_cr4(cr4);
 
     kprintf(KERN_INFO, "Setting up the main kernel pagetable with global pages enabled...\n");
+
 
     /* 
      * Since exception no. 14 is the only CPU exception that we dont handle with the default 

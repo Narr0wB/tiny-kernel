@@ -26,6 +26,9 @@
 #define PAGE_FLAG_USER              (1 << 2)
 #define PAGE_FLAG_PAGESIZE          (1 << 7)
 #define PAGE_FLAG_GLOBAL            (1 << 8)
+#define PAGE_FLAG_PWT               (1 << 3)
+#define PAGE_FLAG_PCD               (1 << 4)
+#define PAGE_FLAG_NOCACHE           (PAGE_FLAG_PCD | PAGE_FLAG_PWT)
 
 #define PGD_INDEX(x)                (((x) >> 39) & 511)
 #define PUD_INDEX(x)                (((x) >> 30) & 511)

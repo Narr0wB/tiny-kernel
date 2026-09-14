@@ -2,6 +2,7 @@
 #include <arch/x86/mm/paging.h>
 
 #include <tiny/mm/vasl.h>
+#include <tiny/boot/efi.h>
 #include <tiny/io.h>
 #include <tiny/panic.h>
 #include <tiny/errno.h>
@@ -17,10 +18,18 @@ static paddr_t kernel_image_end = (paddr_t)0;
 pn_t   max_pfn = 0;
 size_t allocable_pages = 0;
 
-void bootmem_init(struct bootinfo *info)
+void init_bootmem(struct bootinfo *info)
 {
     kernel_image_start = info->kernel_image_start;
     kernel_image_end   = info->kernel_image_end;
+
+    for (size_t i = 0; i < info->map.size; ++i) {
+        struct efi_memory_descriptor *desc = &(info->map.map[i]);
+        switch (desc->type) {
+            case EFI_CONVENTIONAL_MEMORY: bootmem_insert_region(desc->phys_start, desc->phys_start + desc->npages * PAGE_SIZE, REGION_TYPE_RAM); break;
+            case EFI_MEMORY_MAPPED_IO: bootmem_insert_region(desc->phys_start, desc->phys_start + desc->npages * PAGE_SIZE, REGION_TYPE_MMIO); break;
+        }
+    }
 }
 
 int bootmem_insert_region(paddr_t start, paddr_t end, int type) 

@@ -84,7 +84,6 @@ struct superblock {
 
 
 
-
 struct dentry {
     struct inode     *inode;
     struct qstr       name;
@@ -99,12 +98,6 @@ struct dentry {
 struct dentry *dalloc(struct dentry *parent, struct qstr *name);
 struct dentry *dlookup(struct dentry *parent, struct qstr *name);
 void           ddelete(struct dentry *dir);
-
-static __force_inline void dinstantiate(struct dentry *dentry, struct inode *inode)
-{
-    // atomic_inc(&inode->ref);
-    dentry->inode = inode;
-}
 
 static __force_inline struct dentry *dget(struct dentry *dentry)
 {

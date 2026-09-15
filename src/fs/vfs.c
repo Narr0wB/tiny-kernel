@@ -137,8 +137,8 @@ struct dentry *dalloc(struct dentry *parent, struct qstr *name)
     if (!entry)
         return NULL;
 
-    entry->inode = NULL;
-    entry->flags = 0;
+    memset(entry, 0, sizeof(*entry));
+    list_head_init(&entry->child);
 
     if (name) {
         entry->name.str = kstrdup(name->str, name->len);

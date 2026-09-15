@@ -156,6 +156,13 @@
 #define FAT_TIME_HOUR_SHIFT                     11U
 #define FAT_TIME_SECONDS_PER_UNIT               2U
 
+enum fat_type {
+    FAT_TYPE_UNKNOWN = 0,
+    FAT_TYPE_FAT12,
+    FAT_TYPE_FAT16,
+    FAT_TYPE_FAT32,
+};
+
 struct fat_bpb {
     u8  reserved[3];
     u8  oem_name[8];
@@ -226,6 +233,13 @@ struct fat_inode {
 struct fat_super {
     struct block_device *dev;
     struct fat_bpb       bpb;
+    void                *scratch;
+    int                  type;
+    u64                  total_sectors;
+    u32                  fat_start;
+    u32                  root_start;
+    u32                  data_start;
+    u32                  cluster_count;
 };
 
 static __force_inline u16 fat12_entry(u8 *fat, u32 cluster)

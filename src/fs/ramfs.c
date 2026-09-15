@@ -63,7 +63,7 @@ static int ramfs_create(struct inode *dir, struct dentry *negative, mode_t mode)
     if (!inode)
         return -ENOMEM;
 
-    dinstantiate(negative, inode);
+    negative->inode = inode;
     return 0;
 }
 
@@ -74,7 +74,7 @@ static int ramfs_mkdir(struct inode *dir, struct dentry *negative, mode_t mode)
     if (!inode)
         return -ENOMEM;
 
-    dinstantiate(negative, inode);
+    negative->inode = inode;
     return 0;
 }
 
@@ -174,7 +174,7 @@ static int ramfs_fill_super(struct superblock *sb)
         return -ENOMEM;
     }
 
-    dinstantiate(sb->root, root_ino);
+    sb->root->inode = root_ino;
     return 0;
 }
 

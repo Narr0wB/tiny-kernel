@@ -2,8 +2,6 @@
 #ifndef ARCH_X86_PAGING_H
 #define ARCH_X86_PAGING_H
 
-#define ALIGN_UP(x, a)             ((typeof(x))(((unsigned long)(x) + (a) - 1) & ~(a - 1)))
-#define ALIGN_DOWN(x, a)           ((typeof(x))(((unsigned long)(x)) & ~(a - 1)))
 #define ALIGNED(x, a)              ((int)!(x & (a - 1)))
 
 #define PAGE_SIZE_4K               (1ULL << 12)
